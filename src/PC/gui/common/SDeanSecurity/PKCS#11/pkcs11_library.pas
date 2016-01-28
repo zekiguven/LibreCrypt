@@ -84,6 +84,10 @@ type
 
   end;
 
+var
+ //global single instance
+GPKCS11Library : TPKCS11Library;
+
 // Autodetect PKCS#11 library. If more than one are found, prompt the user
 // which one to use
 // Returns: One of:
@@ -106,7 +110,7 @@ uses
   SDUGeneral,
   PKCS11KnownLibs,
   PKCS11LibrarySelectDlg,
-  SDUProgressDlg;
+  dlgProgress;
 
 
 function PKCS11AutoDetectLibrary(AOwner: TComponent): string;
@@ -115,7 +119,7 @@ var
   i: integer;
   cntFound: integer;
   lastFound: TPKCS11KnownLibrary;
-  progressDlg: TSDUProgressDialog;
+  progressDlg: TdlgProgress;
   prevCursor: TCursor;
   canceled: boolean;
 begin
@@ -126,7 +130,7 @@ begin
 
   dlg:= TPKCS11LibrarySelectDialog.Create(AOwner);
   try
-    progressDlg := TSDUProgressDialog.Create(nil);
+    progressDlg := TdlgProgress.Create(nil);
     try
       progressDlg.Min := 0;
       // Yes, this is correct; it's driverFilenames.count and *not*
@@ -283,7 +287,7 @@ begin
   FDLLHandle := LoadLibraryEx(PChar(DLLfilename),THandle(nil),LOAD_WITH_ALTERED_SEARCH_PATH);
 
   if FDLLHandle=0 then                         begin
-    raise EPKCS11DLLNotFound.Create(SDUParamSubstitute(E_EPKCS11_DLLNOTFOUND, [DLLfilename]));
+    raise EPKCS11DLLNotFound.Create(Format(E_EPKCS11_DLLNOTFOUND, [DLLfilename]));
     end;
 
   FFilename:= DLLfilename;

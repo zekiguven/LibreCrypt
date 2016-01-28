@@ -49,6 +49,8 @@ implementation
 {$R *.dfm}
 
 uses
+//lc utils
+lcConsts,
   DriverAPI,
   OTFEFreeOTFE_U,
   OTFEFreeOTFEBase_U,
@@ -112,8 +114,8 @@ begin
         for i := 0 to (stlDeletedOK.Count - 1) do begin
           msgList := msgList + '  ' + stlDeletedOK[i] + SDUCRLF;
         end;
-        msg := SDUParamSubstitute(_('The following keyfiles were deleted successfully:' + SDUCRLF +
-          SDUCRLF + '%1'),
+        msg := Format(_('The following keyfiles were deleted successfully:' + SDUCRLF +
+          SDUCRLF + '%s'),
           [msgList]);
       end;
       if (stlDeletedFail.Count > 0) then begin
@@ -123,8 +125,8 @@ begin
           msgList := msgList + '  ' + stlDeletedFail[i] + SDUCRLF;
         end;
         msg := msg + SDUCRLF;
-        msg := msg + SDUParamSubstitute(_('The following keyfiles could not be deleted:' + SDUCRLF +
-          SDUCRLF + '%1'),
+        msg := msg + Format(_('The following keyfiles could not be deleted:' + SDUCRLF +
+          SDUCRLF + '%s'),
           [msgList]);
       end;
 
@@ -156,8 +158,8 @@ begin
       SDUMessageDlg(_('Keyfile exported successfully'));
     end else begin
       SDUMessageDlg(
-        SDUParamSubstitute(_('Unable to export keyfile to:' + SDUCRLF +
-        SDUCRLF + '%1'),
+        Format(_('Unable to export keyfile to:' + SDUCRLF +
+        SDUCRLF + '%s'),
         [SaveDialog.Filename])
         );
     end;
@@ -313,7 +315,7 @@ begin
 
     warnBadCDB := False;
     if not (GetAllPKCS11CDB(PKCS11Session, FTokenCDBs, errMsg)) then begin
-      SDUMessageDlg(_('Unable to get list of CDB entries from Token') + SDUCRLF +
+      SDUMessageDlg(_('Unable to get list of header entries from Token') + SDUCRLF +
         SDUCRLF + errMsg, mtError);
     end else begin
       for i := low(FTokenCDBs) to high(FTokenCDBs) do begin

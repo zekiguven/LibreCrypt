@@ -12,7 +12,7 @@ uses
   pkcs11_session,
   pkcs11_object,
   //sdu
-  sdugeneral
+lcTypes
   //LibreCrypt
   ;
 
@@ -327,7 +327,7 @@ implementation
 uses
   SysUtils,
   //sdu
-
+sdugeneral,
   SDUi18n,
   pkcs11_attribute,
   pkcs11_slot,
@@ -901,8 +901,8 @@ begin
   end else begin
     if (length(PlaintextData) <> length(CyphertextData)) then begin
       retval   := False;
-      strError := SDUParamSubstitute(
-        _('CDB length changed during encryption; from %1 bytes to %2 bytes'),
+      strError := Format(
+        _('Header length changed during encryption; from %d bytes to %d bytes'),
         [length(PlaintextData), length(CyphertextData)]);
     end;
   end;
@@ -932,8 +932,8 @@ begin
   end else begin
     if (length(PlaintextData) <> length(CyphertextData)) then begin
       retval   := False;
-      strError := SDUParamSubstitute(
-        _('CDB length changed during decryption; from %1 bytes to %2 bytes'),
+      strError := Format(
+        _('Header length changed during decryption; from %d bytes to %d bytes'),
         [length(CyphertextData), length(PlaintextData)]);
     end;
   end;

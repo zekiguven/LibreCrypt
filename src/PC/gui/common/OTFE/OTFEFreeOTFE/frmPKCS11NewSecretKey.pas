@@ -45,9 +45,12 @@ implementation
 {$R *.dfm}
 
 uses
+ //lc Utils
   SDUi18n,
   SDUGeneral,
-  lcDialogs;
+  lcDialogs,
+
+  lcConsts;
 
 // Populate list of key types with all those available on the token
 procedure TfrmPKCS11NewSecretKey.PopulateKeyTypes();
@@ -169,7 +172,7 @@ begin
       end
     else
       begin
-      SDUMessageDlg(SDUParamSubstitute(_('Key "%1" created'), [edLabel.text]), mtInformation);
+      SDUMessageDlg(Format(_('Key "%s" created'), [edLabel.text]), mtInformation);
       end;
     end;
 

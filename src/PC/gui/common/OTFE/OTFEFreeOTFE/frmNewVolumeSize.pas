@@ -11,9 +11,13 @@ unit frmNewVolumeSize;
 interface
 
 uses
-  Classes, Controls, Dialogs,
-  Forms, Graphics, Messages, OTFEFreeOTFEBase_U, SDUFilenameEdit_U,
-  SDUForms, SDUFrames, SDUSpin64Units, Spin64, StdCtrls, SysUtils, Windows;
+     //delphi & libs
+      Classes, Controls, Dialogs,
+  Forms, Graphics, Messages,  Spin64, StdCtrls, SysUtils, Windows,
+  //sdu & LibreCrypt utils
+      OTFEFreeOTFEBase_U, SDUFilenameEdit_U, SDUFrames, SDUSpin64Units,
+   // LibreCrypt forms
+  SDUForms;
 
 type
   TfrmNewVolumeSize = class (TSDUForm)
@@ -48,9 +52,13 @@ implementation
 {$R *.DFM}
 
 uses
+//lc utils
   lcDialogs,
   OTFEFreeOTFE_U, SDUGeneral,
   SDUi18n;
+const
+  // Default volume size as 25MB
+  DEFAULT_VOLUME_SIZE: ULONGLONG = 25 * BYTES_IN_MEGABYTE;
 
 procedure TfrmNewVolumeSize.pbOKClick(Sender: TObject);
 begin

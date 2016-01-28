@@ -6,26 +6,29 @@ unit frmWizardChangePasswordCreateKeyfile;
  //
  // -----------------------------------------------------------------------------
  //
-
+ { TODO 1 -otdk -crefactor : shares many fields with frmKeyEntryFreeOTFE - extract to frames}
 
 interface
 
 uses
-  Classes, ComCtrls, Controls, Dialogs,
+
+ //delphi & libs
+   Classes, ComCtrls, Controls, Dialogs,
   ExtCtrls,
   Forms, Graphics, Messages, MouseRNG,
   PasswordRichEdit, Spin64, StdCtrls, SysUtils, Windows,
-  //sdu
-  lcDialogs, sdurandpool, SDUStdCtrls, SDUGeneral,  fmeDiskPartitionsPanel,
-  //LibreCrypt
-  DriverAPI,   // Required for CRITICAL_DATA_LEN
-  fmeSelectPartition,
-  frmWizard, OTFEFreeOTFE_InstructionRichEdit, OTFEFreeOTFE_PasswordRichEdit,
+  //sdu & LibreCrypt utils
+     lcDialogs, sdurandpool, SDUStdCtrls,  fmeSDUDiskPartitions,
+lcTypes,
+DriverAPI,   // Required for CRITICAL_DATA_LEN
+  OTFEFreeOTFE_InstructionRichEdit, OTFEFreeOTFE_PasswordRichEdit,
   OTFEFreeOTFE_U,
-  OTFEFreeOTFEBase_U,
+  OTFEFreeOTFEBase_U,  SDUForms, SDUFrames, SDUSpin64Units, SDUDialogs,
+   // LibreCrypt forms and frames
+  fmeSelectPartition,
+  frmWizard,
   fmeSDUBlocks,
-  fmeSDUDiskPartitions, SDUForms, SDUFrames, SDUSpin64Units, SDUDialogs,
-  fmeNewPassword;
+  fmeNewPassword, fmePassword;
 
 type
   TChangePasswordCreateKeyfile = (opChangePassword, opCreateKeyfile);
@@ -51,17 +54,15 @@ type
     tsRNGSelect:     TTabSheet;
     reInstructRNGSelect1: TLabel;
     Label9:          TLabel;
-    Label1:          TLabel;
     Label4:          TLabel;
     Label6:          TLabel;
-    preSrcUserKey:   TOTFEFreeOTFE_PasswordRichEdit;
     seSrcSaltLength: TSpinEdit64;
     Label5:          TLabel;
     seDestSaltLength: TSpinEdit64;
     Label7:          TLabel;
     cbDestDriveLetter: TComboBox;
     Label12:         TLabel;
-    gbKeyFile: TGroupBox;
+    gbKeyFile:       TGroupBox;
     lblDestFilename: TSDUFilenameLabel;
     pbBrowseDest:    TButton;
     tsSrcFile:       TTabSheet;
@@ -92,12 +93,13 @@ type
     pbRefresh:       TButton;
     fmeSelectPartition: TfmeSelectPartition;
     se64UnitOffset:  TSDUSpin64Unit_Storage;
-    TSDUDiskPartitionsPanel1: TfmeDiskPartitionsPanel;
+    TSDUDiskPartitionsPanel1: TfmeSDUDiskPartitions;
     frmeNewPassword: TfrmeNewPassword;
     lblInstructDestDetails: TLabel;
     reInstructRNGSelect2: TLabel;
     reInstructRNGSelect3: TLabel;
     reInstructRNGSelect4: TLabel;
+    frmePassword1:   TfrmePassword;
 
     procedure FormShow(Sender: TObject);
     procedure edSrcFilenameChange(Sender: TObject);
@@ -118,10 +120,8 @@ type
     procedure preSrcUserKeyChange(Sender: TObject);
   private
 
-    //    fCombinedRandomData: Ansistring;
-
-    deviceList:  TStringList;
-    deviceTitle: TStringList;
+    fdeviceList:  TStringList;
+    fdeviceTitle: TStringList;
 
     FPKCS11TokensAvailable: Boolean;
 
@@ -133,36 +133,36 @@ type
     function GetSrcUserKey(): TSDUBytes;
     function GetSrcSaltLength(): Integer;
     function GetSrcKeyIterations(): Integer;
+    procedure SetSrcFilename(const Value: String);
+    procedure SetSrcUserKey(const Value: TSDUBytes);
+
     function GetDestFilename(): String;
     procedure SetDestFilename(filename: String);
     function GetDestUserKey(): TSDUBytes;
     function GetDestSaltLength(): Integer;
     function GetDestKeyIterations(): Integer;
     function GetDestRequestedDriveLetter(): DriveLetterChar;
-    //    function GetRandomData(): Ansistring;
+    procedure SetDestUserKey(const Value: TSDUBytes);
 
     procedure PopulatePKCS11Tokens();
 
     procedure SetupInstructionsCreateKeyfile();
 
-    procedure SetSrcFilename(const Value: String);
-    procedure SetDestUserKey(const Value: TSDUBytes);
     procedure SetIsPartition(const Value: Boolean);
-    procedure SetSrcUserKey(const Value: TSDUBytes);
+
 
   protected
     fsilent:       Boolean;
     fsilentResult: TModalResult;
-    procedure SetupInstructions(); override;
+        fChangePasswordCreateKeyfile: TChangePasswordCreateKeyfile;
+    procedure _SetupInstructions(); override;
 
-    procedure EnableDisableControls(); override;
 
-    function IsTabSkipped(tabSheet: TTabSheet): Boolean; override;
+    function _IsTabSkipped(tabSheet: TTabSheet): Boolean; override;
 
     procedure FormWizardStepChanged(Sender: TObject);
-    function IsTabComplete(checkTab: TTabSheet): Boolean; override;
+    function _IsTabComplete(checkTab: TTabSheet): Boolean; override;
   public
-    fChangePasswordCreateKeyfile: TChangePasswordCreateKeyfile;
 
     procedure fmeSelectPartitionChanged(Sender: TObject);
 
@@ -179,9 +179,13 @@ type
 {    property DestSaltLength: Integer Read GetDestSaltLength;
     property DestKeyIterations: Integer Read GetDestKeyIterations;
     property DestRequestedDriveLetter: ansichar Read GetDestRequestedDriveLetter; }
-    //    property RandomData: Ansistring Read GetRandomData;
+
 
   end;
+
+      function WizardChangePassword(SrcFilename: String = ''; OrigKeyPhrase: Ansistring = '';
+      NewKeyPhrase: Ansistring = ''; silent: Boolean = False): Boolean;
+    function WizardCreateKeyfile(silent: Boolean = False): Boolean;
 
 
 implementation
@@ -189,9 +193,16 @@ implementation
 {$R *.DFM}
 
 uses
-  MSCryptoAPI,
-  PKCS11Lib, OTFEFreeOTFEDLL_U,
-  SDUi18n;
+  //delphi & libs (0)
+   MSCryptoAPI,
+  //sdu & LibreCrypt utils (1)
+    lcConsts, sduGeneral,
+  OTFEFreeOTFEDLL_U,
+  PKCS11Lib, SDUi18n,
+  pkcs11_library
+   // LibreCrypt forms and frames (2)
+    //main form  (3)
+;
 
 {$IFDEF _NEVER_DEFINED}
 // This is just a dummy const to fool dxGetText when extracting message
@@ -202,9 +213,9 @@ const
   SDUCRLF = ''#13#10;
 {$ENDIF}
 
-resourcestring
-  FILEORPART_OPT_VOLUME_FILE = 'File';
-  FILEORPART_OPT_PARTITION   = 'Partition';
+const
+  FILEORPART_OPT_PARTITION_INDEX = 1; //index of 'partition' item in rgFileOrPartition
+  FILEORPART_OPT_VOLUME_FILE_INDEX = 0;// index of 'file' item
 
 { TODO 2 -otdk -crefactor : this uses a lot of same code and GUI as create volume - turn into frames }
 function TfrmWizardChangePasswordCreateKeyfile.GetSrcFilename(): String;
@@ -237,12 +248,12 @@ end;
 function TfrmWizardChangePasswordCreateKeyfile.GetSrcUserKey(): TSDUBytes;
 begin
   { TODO 1 -otdk -cfix : warn user - no unicode }
-  Result := SDUStringToSDUBytes(preSrcUserKey.Text);
+  Result := frmePassword1.GetKeyPhrase;
 end;
 
 procedure TfrmWizardChangePasswordCreateKeyfile.SetSrcUserKey(const Value: TSDUBytes);
 begin
-  preSrcUserKey.Text := SDUBytesToString(Value);
+  frmePassword1.SetKeyPhrase(Value);
 end;
 
 function TfrmWizardChangePasswordCreateKeyfile.GetSrcSaltLength(): Integer;
@@ -296,17 +307,10 @@ begin
 
 end;
 
-
- //function TfrmWizardChangePasswordCreateKeyfile.GetRandomData(): Ansistring;
- //begin
- //  Result := fCombinedRandomData;
- //end;
-
-
 // Returns TRUE if the specified tab should be skipped in 'next' progression, otherwise FALSE
-function TfrmWizardChangePasswordCreateKeyfile.IsTabSkipped(tabSheet: TTabSheet): Boolean;
+function TfrmWizardChangePasswordCreateKeyfile._IsTabSkipped(tabSheet: TTabSheet): Boolean;
 begin
-  Result := inherited IsTabSkipped(tabSheet);
+  Result := inherited _IsTabSkipped(tabSheet);
 
   // DLL doesn't currently support partitions
   if (tabSheet = tsFileOrPartition) then begin
@@ -346,18 +350,10 @@ begin
 end;
 
 
-procedure TfrmWizardChangePasswordCreateKeyfile.EnableDisableControls();
-begin
-  inherited;
-
-  // (No wizard specific code for *this* wizard.)
-
-end;
-
 
  // This procedure will check to see if all items on the current tabsheet have
  // been successfully completed
-function TfrmWizardChangePasswordCreateKeyfile.IsTabComplete(checkTab: TTabSheet): Boolean;
+function TfrmWizardChangePasswordCreateKeyfile._IsTabComplete(checkTab: TTabSheet): Boolean;
 var
   randomBitsGenerated: Integer;
 begin
@@ -460,7 +456,7 @@ begin
   //SDUInitAndZeroBuffer(0,fCombinedRandomData);
 
   //  fCombinedRandomData := '';
-  { TODO -otdk -crefactor : this should all be in formcreate - but need to have global TOTFEFreeOTFEBase object first }
+  { TODO -otdk -crefactor : review what should be in formcreate  }
   // tsSrcFile
   if not fsilent then
     lblSrcFilename.Caption := '';
@@ -481,15 +477,9 @@ begin
   //  fmeSelectPartition.Initialize();
 
   // tsSrcDetails
-  preSrcUserKey.Plaintext   := True;
-  // FreeOTFE volumes CAN have newlines in the user's password
-  preSrcUserKey.WantReturns := True;
-  preSrcUserKey.WordWrap    := True;
+
   if not fsilent then
-    preSrcUserKey.Lines.Clear();
-  preSrcUserKey.PasswordChar := GetFreeOTFEBase().PasswordChar;
-  preSrcUserKey.WantReturns  := GetFreeOTFEBase().AllowNewlinesInPasswords;
-  preSrcUserKey.WantTabs     := GetFreeOTFEBase().AllowTabsInPasswords;
+    frmePassword1.ClearPassword;
 
   se64UnitOffset.Value := 0;
 
@@ -531,7 +521,7 @@ begin
   if ckRNGcryptlib.Enabled then
     ckRNGcryptlib.Checked := True;
 
-  ckRNGPKCS11.Enabled := PKCS11LibraryReady(GetFreeOTFEBase().PKCS11Library);
+  ckRNGPKCS11.Enabled := PKCS11LibraryReady(GPKCS11Library);
 
   // tsRNGMouseMovement
   InitMouseRNGData();
@@ -574,7 +564,7 @@ begin
   end;
 
 
-  UpdateUIAfterChangeOnCurrentTab();
+  _UpdateUIAfterChangeOnCurrentTab();
 
   if fSilent then begin
     ModalResult := mrCancel;
@@ -595,9 +585,9 @@ begin
   SDUTranslateComp(reInstructSrcDetails);
   SDUTranslateComp(reInstructDestFile);
   SDUTranslateComp(reInstructRNGSelect1);
-    SDUTranslateComp(reInstructRNGSelect2);
-      SDUTranslateComp(reInstructRNGSelect3);
-        SDUTranslateComp(reInstructRNGSelect4);
+  SDUTranslateComp(reInstructRNGSelect2);
+  SDUTranslateComp(reInstructRNGSelect3);
+  SDUTranslateComp(reInstructRNGSelect4);
   SDUTranslateComp(reInstructDestFile);
 
   SDUTranslateComp(reInstructRNGMouseMovement);
@@ -614,22 +604,22 @@ begin
   if (fChangePasswordCreateKeyfile = opChangePassword) then
     SetDestFilename(GetSrcFilename());
 
-  UpdateUIAfterChangeOnCurrentTab();
+  _UpdateUIAfterChangeOnCurrentTab();
 end;
 
 procedure TfrmWizardChangePasswordCreateKeyfile.se64OffsetChange(Sender: TObject);
 begin
-  UpdateUIAfterChangeOnCurrentTab();
+  _UpdateUIAfterChangeOnCurrentTab();
 end;
 
 procedure TfrmWizardChangePasswordCreateKeyfile.frmeNewPasswordChange(Sender: TObject);
 begin
-  UpdateUIAfterChangeOnCurrentTab();
+  _UpdateUIAfterChangeOnCurrentTab();
 end;
 
 procedure TfrmWizardChangePasswordCreateKeyfile.seSaltLengthChange(Sender: TObject);
 begin
-  UpdateUIAfterChangeOnCurrentTab();
+  _UpdateUIAfterChangeOnCurrentTab();
 end;
 
 procedure TfrmWizardChangePasswordCreateKeyfile.ckRNGClick(Sender: TObject);
@@ -659,7 +649,7 @@ begin
     end;
   end;
 
-  UpdateUIAfterChangeOnCurrentTab();
+  _UpdateUIAfterChangeOnCurrentTab();
 end;
 
 procedure TfrmWizardChangePasswordCreateKeyfile.MouseRNGByteGenerated(Sender: TObject;
@@ -670,8 +660,7 @@ begin
     AddToMouseRNGData(random);
   end;
 
-  UpdateUIAfterChangeOnCurrentTab();
-
+  _UpdateUIAfterChangeOnCurrentTab();
 end;
 
 procedure TfrmWizardChangePasswordCreateKeyfile.pbBrowseGPGClick(Sender: TObject);
@@ -685,7 +674,7 @@ begin
     lblGPGFilename.Caption := GPGOpenDialog.Filename;
   end;
 
-  UpdateUIAfterChangeOnCurrentTab();
+  _UpdateUIAfterChangeOnCurrentTab();
 
 end;
 
@@ -748,7 +737,7 @@ begin
     on E: EInsufficientRandom do begin
       allOK := False;
       SDUMessageDlg(
-        _('Insufficient random data generated: ' + E.message) + SDUCRLF +
+        _('Insufficient random data generated: ') + E.message + SDUCRLF +
         SDUCRLF + PLEASE_REPORT_TO_FREEOTFE_DOC_ADDR,
         mtError
         );
@@ -785,31 +774,33 @@ begin
 
   reInstructSrcFile.Caption :=
     _('Please enter the full path and filename of either:' + SDUCRLF + SDUCRLF +
-    '1) A container containing a CDB, or' + SDUCRLF + '2) An existing keyfile' +
+    '1) A container containing a FreeOTFE header, or' + SDUCRLF + '2) An existing keyfile' +
     SDUCRLF + SDUCRLF + 'for the container you wish to create a keyfile for.' +
     SDUCRLF + SDUCRLF +
-    'If you wish to update a "hidden" container which is inside another container, and your hidden container includes a CDB, please specify the filename of the outer container which stores your hidden container.');
+    'If you wish to update a "hidden" container which is inside another container, and your hidden container includes a CDB, please '+
+    'specify the filename of the outer container which stores your hidden container.');
 
 
   reInstructSrcDetails.Caption :=
     _('Please enter the full details of the container you wish to create a keyfile for.' +
     SDUCRLF + SDUCRLF +
-    'If you wish to update a "hidden" container which is inside another container, and your hidden container includes a CDB, please specify the offset within the outer container where your hidden container is located.');
+    'If you wish to update a "hidden" container which is inside another container, and your hidden container includes a header, '+
+    'please specify the offset within the outer container where your hidden container is located.');
 
 
 
   SDUTranslateComp(lblInstructDestDetails);
 
-//  reInstructRNGSelect.Caption :=
-//    _('In order to create a new keyfile, a certain amount of random data is required.' +
-//    SDUCRLF + SDUCRLF + 'This data will be used for the following:' + SDUCRLF +
-//    SDUCRLF + '1) Password salting' + SDUCRLF + '2) Random padding data' +
-//    SDUCRLF + SDUCRLF +
-//    'In order to generate this data, please select which random number generators you wish to use from the options below.');
+  //  reInstructRNGSelect.Caption :=
+  //    _('In order to create a new keyfile, a certain amount of random data is required.' +
+  //    SDUCRLF + SDUCRLF + 'This data will be used for the following:' + SDUCRLF +
+  //    SDUCRLF + '1) Password salting' + SDUCRLF + '2) Random padding data' +
+  //    SDUCRLF + SDUCRLF +
+  //    'In order to generate this data, please select which random number generators you wish to use from the options below.');
 
 end;
 
-procedure TfrmWizardChangePasswordCreateKeyfile.SetupInstructions();
+procedure TfrmWizardChangePasswordCreateKeyfile._SetupInstructions();
 begin
   inherited;
 
@@ -842,7 +833,7 @@ begin
 
   end;
 
-  UpdateUIAfterChangeOnCurrentTab();
+  _UpdateUIAfterChangeOnCurrentTab();
 
 end;
 
@@ -858,29 +849,28 @@ begin
     lblSrcFilename.Caption := OpenDialog.Filename;
   end;
 
-  UpdateUIAfterChangeOnCurrentTab();
+  _UpdateUIAfterChangeOnCurrentTab();
 
 end;
 
 procedure TfrmWizardChangePasswordCreateKeyfile.rgFileOrPartitionClick(Sender: TObject);
 begin
-  UpdateUIAfterChangeOnCurrentTab();
+  _UpdateUIAfterChangeOnCurrentTab();
 
 end;
 
 
 function TfrmWizardChangePasswordCreateKeyfile.GetIsPartition(): Boolean;
 begin
-  Result := (rgFileOrPartition.ItemIndex = rgFileOrPartition.Items.IndexOf(
-    FILEORPART_OPT_PARTITION));
+  Result := (rgFileOrPartition.ItemIndex = FILEORPART_OPT_PARTITION_INDEX);
 end;
 
 procedure TfrmWizardChangePasswordCreateKeyfile.SetIsPartition(const Value: Boolean);
 begin
   if Value then
-    rgFileOrPartition.ItemIndex := rgFileOrPartition.Items.IndexOf(FILEORPART_OPT_PARTITION)
+    rgFileOrPartition.ItemIndex := FILEORPART_OPT_PARTITION_INDEX
   else
-    rgFileOrPartition.ItemIndex := rgFileOrPartition.Items.IndexOf(FILEORPART_OPT_VOLUME_FILE);
+    rgFileOrPartition.ItemIndex := FILEORPART_OPT_VOLUME_FILE_INDEX;
 end;
 
 procedure TfrmWizardChangePasswordCreateKeyfile.FormWizardStepChanged(Sender: TObject);
@@ -912,32 +902,29 @@ end;
 
 procedure TfrmWizardChangePasswordCreateKeyfile.FormCreate(Sender: TObject);
 begin
-  deviceList                  := TStringList.Create();
-  deviceTitle                 := TStringList.Create();
+  fdeviceList                 := TStringList.Create();
+  fdeviceTitle                := TStringList.Create();
   fmeSelectPartition.OnChange := fmeSelectPartitionChanged;
 
   OnWizardStepChanged := FormWizardStepChanged;
   { done -otdk -crefactor : populate in designer }
 
   // tsFileOrPartition
-  rgFileOrPartition.Items.Clear();
-  rgFileOrPartition.Items.Add(FILEORPART_OPT_VOLUME_FILE);
-  rgFileOrPartition.Items.Add(FILEORPART_OPT_PARTITION);
-  rgFileOrPartition.ItemIndex := rgFileOrPartition.Items.IndexOf(FILEORPART_OPT_VOLUME_FILE);
+  rgFileOrPartition.ItemIndex := FILEORPART_OPT_VOLUME_FILE_INDEX;
   frmeNewPassword.OnChange    := frmeNewPasswordChange;
 end;
 
 procedure TfrmWizardChangePasswordCreateKeyfile.FormDestroy(Sender: TObject);
 begin
-  deviceList.Free();
-  deviceTitle.Free();
+  fdeviceList.Free();
+  fdeviceTitle.Free();
 
   PurgeMouseRNGData();
 end;
 
 procedure TfrmWizardChangePasswordCreateKeyfile.PopulatePKCS11Tokens();
 begin
-  FPKCS11TokensAvailable := (PKCS11PopulateTokenList(GetFreeOTFEBase().PKCS11Library,
+  FPKCS11TokensAvailable := (PKCS11PopulateTokenList(GPKCS11Library,
     cbToken) > 0);
 end;
 
@@ -945,7 +932,7 @@ procedure TfrmWizardChangePasswordCreateKeyfile.preSrcUserKeyChange(
   Sender: TObject);
 begin
   inherited;
-  UpdateUIAfterChangeOnCurrentTab();
+  _UpdateUIAfterChangeOnCurrentTab();
 end;
 
 procedure TfrmWizardChangePasswordCreateKeyfile.pbRefreshClick(Sender: TObject);
@@ -955,7 +942,62 @@ end;
 
 procedure TfrmWizardChangePasswordCreateKeyfile.fmeSelectPartitionChanged(Sender: TObject);
 begin
-  UpdateUIAfterChangeOnCurrentTab();
+  _UpdateUIAfterChangeOnCurrentTab();
 end;
+
+
+// ----------------------------------------------------------------------------
+function WizardChangePassword(SrcFilename: String = '';
+  OrigKeyPhrase: Ansistring = ''; NewKeyPhrase: Ansistring = ''; silent: Boolean = False): Boolean;
+var
+  dlg: TfrmWizardChangePasswordCreateKeyfile;
+begin
+  Result := False;
+
+  if GetFreeOTFE().WarnIfNoHashOrCypherDrivers() then begin
+    dlg := TfrmWizardChangePasswordCreateKeyfile.Create(nil);
+    try
+      dlg.fChangePasswordCreateKeyfile := opChangePassword;
+      dlg.IsPartition := False;
+      dlg.SrcFileName := SrcFilename;
+      dlg.SrcUserKey := SDUStringToSDUBytes(OrigKeyPhrase);
+      dlg.DestUserKey := SDUStringToSDUBytes(NewKeyPhrase);
+      dlg.silent := silent;
+      Result     := (dlg.ShowModal() = mrOk);
+    finally
+      dlg.Free();
+    end;
+  end;
+end;
+
+// ----------------------------------------------------------------------------
+function WizardCreateKeyfile(silent: Boolean = False): Boolean;
+var
+  dlg: TfrmWizardChangePasswordCreateKeyfile;
+begin
+  Result := False;
+
+  if GetFreeOTFE().WarnIfNoHashOrCypherDrivers() then begin
+    dlg := TfrmWizardChangePasswordCreateKeyfile.Create(nil);
+    try
+      dlg.fChangePasswordCreateKeyfile := opCreateKeyfile;
+      dlg.silent := silent;
+      //thinks this not needed:
+{
+      if silent then begin
+        dlg.pbFinishClick(self);
+        Result := True;
+      end else begin
+
+      end;    }
+      Result     := (dlg.ShowModal() = mrOk);
+
+    finally
+      dlg.Free();
+    end;
+
+  end;
+end;
+
 
 end.

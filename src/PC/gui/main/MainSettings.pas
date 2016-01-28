@@ -12,11 +12,13 @@ interface
 
 uses
   Classes, // Required for TShortCut
-  CommonSettings,
+
   IniFiles,
-  OTFEFreeOTFEBase_U,
+  //  OTFEFreeOTFEBase_U,
   //sdu
-  sdugeneral;
+  lcTypes,
+  CommonSettings;
+
 const
 {$IFDEF _NEVER_DEFINED}
 // This is just a dummy const to fool dxGetText when extracting message
@@ -29,8 +31,7 @@ const
 
   FREEOTFE_REGISTRY_SETTINGS_LOCATION = '\Software\LibreCrypt';
 
-  // Command line parameter handled in the .dpr
-  CMDLINE_MINIMIZE = 'minimize';
+
 
 resourcestring
   RS_PROMPT_USER = 'Prompt user';
@@ -45,7 +46,7 @@ resourcestring
   ONEXITWHENMOUNTED_LEAVEMOUNTED = 'Leave containers open';
 
 const
-  OnExitWhenMountedTitlePtr: array [eOnExitWhenMounted] of Pointer =
+  ON_EXIT_WHEN_MOUNTED_TITLE_PTR: array [eOnExitWhenMounted] of Pointer =
     (@ONEXITWHENMOUNTED_DISMOUNT, @RS_PROMPT_USER, @ONEXITWHENMOUNTED_LEAVEMOUNTED
     );
 
@@ -56,7 +57,7 @@ resourcestring
   ONEXITWHENPORTABLEMODE_PORTABLEOFF = 'Turn off portable mode';
 
 const
-  OnExitWhenPortableModeTitlePtr: array [eOnExitWhenPortableMode] of Pointer =
+  ON_EXIT_WHEN_PORTABLE_MODE_TITLE_PTR: array [eOnExitWhenPortableMode] of Pointer =
     (@ONEXITWHENPORTABLEMODE_PORTABLEOFF, @RS_PROMPT_USER, @RS_DO_NOTHING
     );
 
@@ -64,17 +65,15 @@ const
 type
   eOnNormalDismountFail = (ondfForceDismount, ondfPromptUser, ondfCancelDismount);
 
-  // is app running? used to detect crashes
-  eAppRunning = (arDontKnow{no settings file}, arRunning{set in InitApp}, arClosed{set in Form.close});
+
 
 resourcestring
-  ONNORMALDISMOUNTFAIL_FORCEDISMOUNT  = 'Force dismount';
-  ONNORMALDISMOUNTFAIL_CANCELDISMOUNT = 'Cancel dismount';
+  ONNORMALDISMOUNTFAIL_FORCEDISMOUNT  = 'Force lock';
+  ONNORMALDISMOUNTFAIL_CANCELDISMOUNT = 'Cancel lock';
 
 const
   OnNormalDismountFailTitlePtr: array [eOnNormalDismountFail] of Pointer =
-    (@ONNORMALDISMOUNTFAIL_FORCEDISMOUNT, @RS_PROMPT_USER,
-    @ONNORMALDISMOUNTFAIL_CANCELDISMOUNT
+    (@ONNORMALDISMOUNTFAIL_FORCEDISMOUNT, @RS_PROMPT_USER, @ONNORMALDISMOUNTFAIL_CANCELDISMOUNT
     );
 
 type
@@ -90,17 +89,17 @@ type
     );
 
 resourcestring
-  SYSTEMTRAYCLICKACTION_DONOTHING                = 'Do nothing';
-  SYSTEMTRAYCLICKACTION_DISPLAYCONSOLE           = 'Display window';
-  SYSTEMTRAYCLICKACTION_DISPLAYHIDECONSOLETOGGLE = 'Display/hide window toggle';
-  SYSTEMTRAYCLICKACTION_MOUNTFILE                = 'Open LibreCrypt file ...';
-  SYSTEMTRAYCLICKACTION_MOUNTPARTITION           = 'Open LibreCrypt partition...';
-  SYSTEMTRAYCLICKACTION_MOUNTLINUXFILE           = 'Open (Linux) ...';
-  SYSTEMTRAYCLICKACTION_MOUNTLINUXPARTITION      = 'Open partition (Linux) ...';
-  SYSTEMTRAYCLICKACTION_DISMOUNTALL              = 'Lock all';
+  SYSTEMTRAYCLICKACTION_DONOTHING           = 'Do nothing';
+  SYSTEMTRAYCLICKACTION_DISPLAYCONSOLE      = 'Show window';
+  SYSTEMTRAYCLICKACTION_DISPLAYHIDECONSOLETOGGLE = 'Show/hide window toggle';
+  SYSTEMTRAYCLICKACTION_MOUNTFILE           = 'Open LibreCrypt file ...';
+  SYSTEMTRAYCLICKACTION_MOUNTPARTITION      = 'Open LibreCrypt partition ...';
+  SYSTEMTRAYCLICKACTION_MOUNTLINUXFILE      = 'Open (Linux) ...';
+  SYSTEMTRAYCLICKACTION_MOUNTLINUXPARTITION = 'Open partition (Linux) ...';
+  SYSTEMTRAYCLICKACTION_DISMOUNTALL         = 'Lock all';
 
 const
-  SystemTrayClickActionTitlePtr: array [TSystemTrayClickAction] of Pointer =
+  SYSTEM_TRAY_CLICK_ACTION_TITLE_PTR: array [TSystemTrayClickAction] of Pointer =
     (@SYSTEMTRAYCLICKACTION_DONOTHING, @SYSTEMTRAYCLICKACTION_DISPLAYCONSOLE,
     @SYSTEMTRAYCLICKACTION_DISPLAYHIDECONSOLETOGGLE, @SYSTEMTRAYCLICKACTION_MOUNTFILE,
     @SYSTEMTRAYCLICKACTION_MOUNTPARTITION, @SYSTEMTRAYCLICKACTION_MOUNTLINUXFILE,
@@ -110,52 +109,94 @@ const
 
 type
   TMainSettings = class (TCommonSettings)
-  PROTECTED
-    procedure _Load(iniFile: TCustomINIFile); OVERRIDE;
-    function _Save(iniFile: TCustomINIFile): Boolean; OVERRIDE;
+  private
+    femergencyDismountHotKeyEnabled: Boolean;
+    fsysTrayDoubleClickAction: TSystemTrayClickAction;
+    fcloseToSysTray:           Boolean;
+    fexitWhenPortableModeAction: eOnExitWhenPortableMode;
+    fdismountHotKey:       TShortCut;
+    fOptAutoStartPortable:     Boolean;
+    femergencyDismountHotKey:  TShortCut;
+    fshowSysTrayIcon:          Boolean;
+    fOptOnExitWhenMounted:     eOnExitWhenMounted;
+    fdefaultMountDiskType:     TMountDiskType;
+    fOptAllowMultipleInstances: Boolean;
+    fsysTraySingleClickAction: TSystemTrayClickAction;
+    fminimiseToSysTray:        Boolean;
+    fOptWarnBeforeForcedDismount: Boolean;
+    fdismountHotKeyEnabled:    Boolean;
+    fOptOnNormalDismountFail:  eOnNormalDismountFail;
 
-  PUBLIC
+  protected
+    procedure _LoadOld(iniFile: TCustomINIFile); override;
+    //    function _Save(iniFile: TCustomINIFile): Boolean; OVERRIDE;
+    procedure _SetDefaults; override;
+
+  public
+
+
+
+    function RegistryKey(): String; override;
+
+  published
+    (*
+     property names are stored as keys in ini file where users can change so keep friendly and explanatory
+     *)
+
+    // settings need to be properties and published in order to be picked up by rtti and saved to ini file
+
     // General...
-    OptDisplayToolbar:         Boolean;
-    OptDisplayToolbarLarge:    Boolean;
-    OptDisplayToolbarCaptions: Boolean;
-    OptDisplayStatusbar:       Boolean;
-    OptAllowMultipleInstances: Boolean;
-    OptAutoStartPortable:      Boolean;
-//    OptInstalled:              Boolean;// has installer been run?
-    OptDefaultDriveLetter:     DriveLetterChar;
-    OptDefaultMountAs:         TFreeOTFEMountAs;
-    feAppRunning        :         eAppRunning;
+    property AllowMultipleInstances: Boolean Read FOptAllowMultipleInstances
+      Write FOptAllowMultipleInstances default False;
+    property AutoStartPortableMode: Boolean Read FOptAutoStartPortable
+      Write FOptAutoStartPortable default False;
+    //    OptInstalled:              Boolean;// has installer been run?
+
+    property DefaultMountDiskType: TMountDiskType
+      Read fdefaultMountDiskType Write fdefaultMountDiskType default fomaRemovableDisk;
+
     // Prompts and messages
-    OptWarnBeforeForcedDismount: Boolean;
-    OptOnExitWhenMounted:        eOnExitWhenMounted;
-    OptOnExitWhenPortableMode:   eOnExitWhenPortableMode;
-    OptOnNormalDismountFail:     eOnNormalDismountFail;
+    property WarnBeforeForceDismount: Boolean Read FOptWarnBeforeForcedDismount
+      Write fOptWarnBeforeForcedDismount default True;
+    property ExitWhenMountedAction: eOnExitWhenMounted
+      Read FOptOnExitWhenMounted Write fOptOnExitWhenMounted default oewmPromptUser;
+    property ExitWhenPortableModeAction: eOnExitWhenPortableMode
+      Read fexitWhenPortableModeAction Write fexitWhenPortableModeAction default oewpPromptUser;
+    property NormalDismountFailAction: eOnNormalDismountFail
+      Read FOptOnNormalDismountFail Write fOptOnNormalDismountFail default ondfPromptUser;
 
     // System tray icon...
-    OptSystemTrayIconDisplay:           Boolean;
-    OptSystemTrayIconMinTo:             Boolean;
-    OptSystemTrayIconCloseTo:           Boolean;
-    OptSystemTrayIconActionSingleClick: TSystemTrayClickAction;
-    OptSystemTrayIconActionDoubleClick: TSystemTrayClickAction;
+    property ShowSysTrayIcon: Boolean Read fshowSysTrayIcon
+      Write fshowSysTrayIcon default True;
+    property MinimiseToSysTray: Boolean Read fminimiseToSysTray
+      Write fminimiseToSysTray default False;
+    property CloseToSysTray: Boolean
+      Read fcloseToSysTray Write fcloseToSysTray default True;
+    property SysTraySingleClickAction: TSystemTrayClickAction
+      Read fsysTraySingleClickAction Write fsysTraySingleClickAction default stcaDisplayConsole;
+    property SysTrayDoubleClickAction: TSystemTrayClickAction
+      Read fsysTrayDoubleClickAction Write fsysTrayDoubleClickAction default stcaDisplayConsole;
 
     // Hotkey...
-    OptHKeyEnableDismount:      Boolean;
-    OptHKeyKeyDismount:         TShortCut;
-    OptHKeyEnableDismountEmerg: Boolean;
-    OptHKeyKeyDismountEmerg:    TShortCut;
+    property DismountHotKeyEnabled: Boolean Read fdismountHotKeyEnabled
+      Write fdismountHotKeyEnabled default False;
+     // default 'Shift+Ctrl+D';
+    property DismountHotKey: TShortCut Read fdismountHotKey Write fdismountHotKey;
 
-    constructor Create(); OVERRIDE;
-    destructor Destroy(); OVERRIDE;
-
-    function RegistryKey(): String; OVERRIDE;
+    property EmergencyDismountHotKeyEnabled: Boolean
+      Read femergencyDismountHotKeyEnabled Write femergencyDismountHotKeyEnabled default False;
+      // default 'Shift+Ctrl+Alt+D';
+    property EmergencyDismountHotKey: TShortCut Read femergencyDismountHotKey
+      Write femergencyDismountHotKey;
 
   end;
 
 
-var
-  // Global variable
-  gSettings: TMainSettings;
+ //var
+ // Global variable
+ //  gSettings: TMainSettings;
+ {returns an instance of the only object, must be type TMainSettings. call SetSettingsType first}
+function GetMainSettings: TMainSettings;
 
 function OnExitWhenMountedTitle(Value: eOnExitWhenMounted): String;
 function OnExitWhenPortableModeTitle(Value: eOnExitWhenPortableMode): String;
@@ -182,24 +223,17 @@ const
   // -- General section --
   // Note: "Advanced" options are *also* stored within the "General" section
   //       This is done because some "General" settings were moved to become "Advanced" settings
-  OPT_DISPLAYTOOLBAR              = 'DisplayToolbar';
-  DFLT_OPT_DISPLAYTOOLBAR         = True;
-  OPT_DISPLAYTOOLBARLARGE         = 'DisplayToolbarLarge';
-  DFLT_OPT_DISPLAYTOOLBARLARGE    = True;
-  OPT_DISPLAYTOOLBARCAPTIONS      = 'DisplayToolbarCaptions';
-  DFLT_OPT_DISPLAYTOOLBARCAPTIONS = True;
-  OPT_DISPLAYSTATUSBAR            = 'DisplayStatusbar';
-  DFLT_OPT_DISPLAYSTATUSBAR       = True;
+
+
   OPT_ALLOWMULTIPLEINSTANCES      = 'AllowMultipleInstances';
   DFLT_OPT_ALLOWMULTIPLEINSTANCES = False;
   OPT_AUTOSTARTPORTABLE           = 'AutoStartPortable';
   DFLT_OPT_AUTOSTARTPORTABLE      = False;
   OPT_DEFAULTMOUNTAS              = 'DefaultMountAs';
   DFLT_OPT_DEFAULTMOUNTAS         = fomaRemovableDisk;
-//  OPT_OPTINSTALLED                = 'Installed';
-//  DFLT_OPT_OPTINSTALLED           = False;
-  OPT_APPRUNNING                 = 'AppRunning';
-  DFLT_OPT_APPRUNNING            = arDontKnow;
+  //  OPT_OPTINSTALLED                = 'Installed';
+  //  DFLT_OPT_OPTINSTALLED           = False;
+
 
   // -- Prompts and messages --
   // Section name defined in parent class's unit
@@ -239,12 +273,12 @@ const
 
 function OnExitWhenMountedTitle(Value: eOnExitWhenMounted): String;
 begin
-  Result := LoadResString(OnExitWhenMountedTitlePtr[Value]);
+  Result := LoadResString(ON_EXIT_WHEN_MOUNTED_TITLE_PTR[Value]);
 end;
 
 function OnExitWhenPortableModeTitle(Value: eOnExitWhenPortableMode): String;
 begin
-  Result := LoadResString(OnExitWhenPortableModeTitlePtr[Value]);
+  Result := LoadResString(ON_EXIT_WHEN_PORTABLE_MODE_TITLE_PTR[Value]);
 end;
 
 function OnNormalDismountFailTitle(Value: eOnNormalDismountFail): String;
@@ -254,151 +288,137 @@ end;
 
 function SystemTrayClickActionTitle(Value: TSystemTrayClickAction): String;
 begin
-  Result := LoadResString(SystemTrayClickActionTitlePtr[Value]);
+  Result := LoadResString(SYSTEM_TRAY_CLICK_ACTION_TITLE_PTR[Value]);
 end;
 
 
-constructor TMainSettings.Create();
+procedure TMainSettings._LoadOld(iniFile: TCustomINIFile);
 begin
-  inherited;
+  inherited _LoadOld(iniFile);
 
-  Load();
 
-end;
-
-destructor TMainSettings.Destroy();
-begin
-
-  inherited;
-end;
-
-procedure TMainSettings._Load(iniFile: TCustomINIFile);
-begin
-  inherited _Load(iniFile);
-  // todo -otdk : combine load and save, and/or use rtti
-  OptDisplayToolbar         := iniFile.ReadBool(SECTION_GENERAL, OPT_DISPLAYTOOLBAR,
-    DFLT_OPT_DISPLAYTOOLBAR);
-  OptDisplayToolbarLarge    := iniFile.ReadBool(SECTION_GENERAL,
-    OPT_DISPLAYTOOLBARLARGE, DFLT_OPT_DISPLAYTOOLBARLARGE);
-  OptDisplayToolbarCaptions := iniFile.ReadBool(SECTION_GENERAL,
-    OPT_DISPLAYTOOLBARCAPTIONS, DFLT_OPT_DISPLAYTOOLBARCAPTIONS);
-  OptDisplayStatusbar       := iniFile.ReadBool(SECTION_GENERAL,
-    OPT_DISPLAYSTATUSBAR, DFLT_OPT_DISPLAYSTATUSBAR);
-  OptAllowMultipleInstances := iniFile.ReadBool(SECTION_GENERAL,
-    OPT_ALLOWMULTIPLEINSTANCES, DFLT_OPT_ALLOWMULTIPLEINSTANCES);
-  OptAutoStartPortable      := iniFile.ReadBool(SECTION_GENERAL, OPT_AUTOSTARTPORTABLE,
+  AllowMultipleInstances := iniFile.ReadBool(SECTION_GENERAL, OPT_ALLOWMULTIPLEINSTANCES,
+    DFLT_OPT_ALLOWMULTIPLEINSTANCES);
+  AutoStartPortableMode  := iniFile.ReadBool(SECTION_GENERAL, OPT_AUTOSTARTPORTABLE,
     DFLT_OPT_AUTOSTARTPORTABLE);
-  OptDefaultMountAs         := TFreeOTFEMountAs(iniFile.ReadInteger(SECTION_GENERAL,
-    OPT_DEFAULTMOUNTAS, Ord(DFLT_OPT_DEFAULTMOUNTAS)));
-  feAppRunning      :=
-    eAppRunning(iniFile.ReadInteger(SECTION_GENERAL,
-    OPT_APPRUNNING, Ord(DFLT_OPT_APPRUNNING)));
+  DefaultMountDiskType   :=
+    TMountDiskType(iniFile.ReadInteger(SECTION_GENERAL, OPT_DEFAULTMOUNTAS,
+    Ord(DFLT_OPT_DEFAULTMOUNTAS)));
 
-  OptWarnBeforeForcedDismount := iniFile.ReadBool(SECTION_CONFIRMATION,
+
+  WarnBeforeForceDismount    := iniFile.ReadBool(SECTION_CONFIRMATION,
     OPT_WARNBEFOREFORCEDISMOUNT, DFLT_OPT_WARNBEFOREFORCEDISMOUNT);
-  OptOnExitWhenMounted        :=
+  ExitWhenMountedAction      :=
     eOnExitWhenMounted(iniFile.ReadInteger(SECTION_CONFIRMATION, OPT_ONEXITWHENMOUNTED,
     Ord(DFLT_OPT_ONEXITWHENMOUNTED)));
-  OptOnExitWhenPortableMode   :=
+  ExitWhenPortableModeAction :=
     eOnExitWhenPortableMode(iniFile.ReadInteger(SECTION_CONFIRMATION,
     OPT_ONEXITWHENPORTABLEMODE, Ord(DFLT_OPT_ONEXITWHENPORTABLEMODE)));
-  OptOnNormalDismountFail     :=
+  NormalDismountFailAction   :=
     eOnNormalDismountFail(iniFile.ReadInteger(SECTION_CONFIRMATION,
     OPT_ONNORMALDISMOUNTFAIL, Ord(DFLT_OPT_ONNORMALDISMOUNTFAIL)));
 
-  OptSystemTrayIconDisplay           :=
+  fShowSysTrayIcon          :=
     iniFile.ReadBool(SECTION_SYSTEMTRAYICON, OPT_SYSTEMTRAYICONDISPLAY,
     DFLT_OPT_SYSTEMTRAYICONDISPLAY);
-  OptSystemTrayIconMinTo             :=
+  fMinimiseToSysTray        :=
     iniFile.ReadBool(SECTION_SYSTEMTRAYICON, OPT_SYSTEMTRAYICONMINTO,
     DFLT_OPT_SYSTEMTRAYICONMINTO);
-  OptSystemTrayIconCloseTo           :=
+  fCloseToSysTray           :=
     iniFile.ReadBool(SECTION_SYSTEMTRAYICON, OPT_SYSTEMTRAYICONCLOSETO,
     DFLT_OPT_SYSTEMTRAYICONCLOSETO);
-  OptSystemTrayIconActionSingleClick :=
+  fSysTraySingleClickAction :=
     TSystemTrayClickAction(iniFile.ReadInteger(SECTION_SYSTEMTRAYICON,
     OPT_SYSTEMTRAYICONACTIONSINGLECLICK, Ord(DFLT_OPT_SYSTEMTRAYICONACTIONSINGLECLICK)));
-  OptSystemTrayIconActionDoubleClick :=
+  fSysTrayDoubleClickAction :=
     TSystemTrayClickAction(iniFile.ReadInteger(SECTION_SYSTEMTRAYICON,
     OPT_SYSTEMTRAYICONACTIONDOUBLECLICK, Ord(DFLT_OPT_SYSTEMTRAYICONACTIONDOUBLECLICK)));
 
-  OptHKeyEnableDismount      := iniFile.ReadBool(SECTION_HOTKEY,
+  fDismountHotKeyEnabled         := iniFile.ReadBool(SECTION_HOTKEY,
     OPT_HOTKEYENABLEDISMOUNT, DFLT_OPT_HOTKEYENABLEDISMOUNT);
-  OptHKeyKeyDismount         := TextToShortCut(iniFile.ReadString(SECTION_HOTKEY,
+  DismountHotKey                 := TextToShortCut(iniFile.ReadString(SECTION_HOTKEY,
     OPT_HOTKEYKEYDISMOUNT, DFLT_OPT_HOTKEYKEYDISMOUNT));
-  OptHKeyEnableDismountEmerg := iniFile.ReadBool(SECTION_HOTKEY,
-    OPT_HOTKEYENABLEDISMOUNTEMERG, DFLT_OPT_HOTKEYENABLEDISMOUNTEMERG);
-  OptHKeyKeyDismountEmerg    := TextToShortCut(iniFile.ReadString(SECTION_HOTKEY,
+  EmergencyDismountHotKeyEnabled :=
+    iniFile.ReadBool(SECTION_HOTKEY, OPT_HOTKEYENABLEDISMOUNTEMERG,
+    DFLT_OPT_HOTKEYENABLEDISMOUNTEMERG);
+  EmergencyDismountHotKey        := TextToShortCut(iniFile.ReadString(SECTION_HOTKEY,
     OPT_HOTKEYKEYDISMOUNTEMERG, DFLT_OPT_HOTKEYKEYDISMOUNTEMERG));
 
 end;
 
-
-function TMainSettings._Save(iniFile: TCustomINIFile): Boolean;
+procedure TMainSettings._SetDefaults;
 begin
-  Result := inherited _Save(iniFile);
-  if Result then begin
-    try
-      iniFile.WriteBool(SECTION_GENERAL, OPT_DISPLAYTOOLBAR, OptDisplayToolbar);
-      iniFile.WriteBool(SECTION_GENERAL, OPT_DISPLAYTOOLBARLARGE,
-        OptDisplayToolbarLarge);
-      iniFile.WriteBool(SECTION_GENERAL, OPT_DISPLAYTOOLBARCAPTIONS,
-        OptDisplayToolbarCaptions);
-      iniFile.WriteBool(SECTION_GENERAL, OPT_DISPLAYSTATUSBAR,
-        OptDisplayStatusbar);
-      iniFile.WriteBool(SECTION_GENERAL, OPT_ALLOWMULTIPLEINSTANCES,
-        OptAllowMultipleInstances);
-      iniFile.WriteBool(SECTION_GENERAL, OPT_AUTOSTARTPORTABLE,
-        OptAutoStartPortable);
-      iniFile.WriteInteger(SECTION_GENERAL, OPT_DEFAULTMOUNTAS,
-        Ord(OptDefaultMountAs));
-     iniFile.WriteInteger(SECTION_GENERAL, OPT_APPRUNNING,
-        Ord(feAppRunning));
-
-      iniFile.WriteBool(SECTION_CONFIRMATION, OPT_WARNBEFOREFORCEDISMOUNT,
-        OptWarnBeforeForcedDismount);
-      iniFile.WriteInteger(SECTION_CONFIRMATION, OPT_ONEXITWHENMOUNTED,
-        Ord(OptOnExitWhenMounted));
-      iniFile.WriteInteger(SECTION_CONFIRMATION, OPT_ONEXITWHENPORTABLEMODE,
-        Ord(OptOnExitWhenPortableMode));
-      iniFile.WriteInteger(SECTION_CONFIRMATION, OPT_ONNORMALDISMOUNTFAIL,
-        Ord(OptOnNormalDismountFail));
-
-
-
-
-      iniFile.WriteBool(SECTION_SYSTEMTRAYICON, OPT_SYSTEMTRAYICONDISPLAY,
-        OptSystemTrayIconDisplay);
-      iniFile.WriteBool(SECTION_SYSTEMTRAYICON, OPT_SYSTEMTRAYICONMINTO,
-        OptSystemTrayIconMinTo);
-      iniFile.WriteBool(SECTION_SYSTEMTRAYICON, OPT_SYSTEMTRAYICONCLOSETO,
-        OptSystemTrayIconCloseTo);
-      iniFile.WriteInteger(SECTION_SYSTEMTRAYICON, OPT_SYSTEMTRAYICONACTIONSINGLECLICK,
-        Ord(OptSystemTrayIconActionSingleClick));
-      iniFile.WriteInteger(SECTION_SYSTEMTRAYICON, OPT_SYSTEMTRAYICONACTIONDOUBLECLICK,
-        Ord(OptSystemTrayIconActionDoubleClick));
-
-      iniFile.WriteBool(SECTION_HOTKEY, OPT_HOTKEYENABLEDISMOUNT,
-        OptHKeyEnableDismount);
-      iniFile.WriteString(SECTION_HOTKEY, OPT_HOTKEYKEYDISMOUNT,
-        ShortCutToText(OptHKeyKeyDismount));
-      iniFile.WriteBool(SECTION_HOTKEY, OPT_HOTKEYENABLEDISMOUNTEMERG,
-        OptHKeyEnableDismountEmerg);
-      iniFile.WriteString(SECTION_HOTKEY, OPT_HOTKEYKEYDISMOUNTEMERG,
-        ShortCutToText(OptHKeyKeyDismountEmerg));
-
-    except
-      on E: Exception do begin
-        Result := False;
-      end;
-    end;
-  end;
-
+  inherited;
+  fdismountHotKey      := TextToShortCut(DFLT_OPT_HOTKEYKEYDISMOUNT);
+  femergencyDismountHotKey := TextToShortCut(DFLT_OPT_HOTKEYKEYDISMOUNTEMERG);
 end;
+
+ //
+ //function TMainSettings._Save(iniFile: TCustomINIFile): Boolean;
+ //begin
+ //  Result := inherited _Save(iniFile);
+ //  if Result then begin
+ //    try
+ //
+ //
+ //      iniFile.WriteBool(SECTION_GENERAL, OPT_ALLOWMULTIPLEINSTANCES,
+ //        OptAllowMultipleInstances);
+ //      iniFile.WriteBool(SECTION_GENERAL, OPT_AUTOSTARTPORTABLE,
+ //        OptAutoStartPortable);
+ //      iniFile.WriteInteger(SECTION_GENERAL, OPT_DEFAULTMOUNTAS,
+ //        Ord(OptDefaultMountAs));
+ //
+ //
+ //      iniFile.WriteBool(SECTION_CONFIRMATION, OPT_WARNBEFOREFORCEDISMOUNT,
+ //        OptWarnBeforeForcedDismount);
+ //      iniFile.WriteInteger(SECTION_CONFIRMATION, OPT_ONEXITWHENMOUNTED,
+ //        Ord(OptOnExitWhenMounted));
+ //      iniFile.WriteInteger(SECTION_CONFIRMATION, OPT_ONEXITWHENPORTABLEMODE,
+ //        Ord(OptOnExitWhenPortableMode));
+ //      iniFile.WriteInteger(SECTION_CONFIRMATION, OPT_ONNORMALDISMOUNTFAIL,
+ //        Ord(OptOnNormalDismountFail));
+ //
+ //
+ //
+ //      iniFile.WriteBool(SECTION_SYSTEMTRAYICON, OPT_SYSTEMTRAYICONDISPLAY,
+ //        OptSystemTrayIconDisplay);
+ //      iniFile.WriteBool(SECTION_SYSTEMTRAYICON, OPT_SYSTEMTRAYICONMINTO,
+ //        OptSystemTrayIconMinTo);
+ //      iniFile.WriteBool(SECTION_SYSTEMTRAYICON, OPT_SYSTEMTRAYICONCLOSETO,
+ //        OptSystemTrayIconCloseTo);
+ //      iniFile.WriteInteger(SECTION_SYSTEMTRAYICON, OPT_SYSTEMTRAYICONACTIONSINGLECLICK,
+ //        Ord(OptSystemTrayIconActionSingleClick));
+ //      iniFile.WriteInteger(SECTION_SYSTEMTRAYICON, OPT_SYSTEMTRAYICONACTIONDOUBLECLICK,
+ //        Ord(OptSystemTrayIconActionDoubleClick));
+ //
+ //      iniFile.WriteBool(SECTION_HOTKEY, OPT_HOTKEYENABLEDISMOUNT,
+ //        OptHKeyEnableDismount);
+ //      iniFile.WriteString(SECTION_HOTKEY, OPT_HOTKEYKEYDISMOUNT,
+ //        ShortCutToText(OptHKeyKeyDismount));
+ //      iniFile.WriteBool(SECTION_HOTKEY, OPT_HOTKEYENABLEDISMOUNTEMERG,
+ //        OptHKeyEnableDismountEmerg);
+ //      iniFile.WriteString(SECTION_HOTKEY, OPT_HOTKEYKEYDISMOUNTEMERG,
+ //        ShortCutToText(OptHKeyKeyDismountEmerg));
+ //
+ //    except
+ //      on E: Exception do begin
+ //        Result := False;
+ //      end;
+ //    end;
+ //  end;
+ //
+ //end;
 
 function TMainSettings.RegistryKey(): String;
 begin
   Result := FREEOTFE_REGISTRY_SETTINGS_LOCATION;
+end;
+
+{returns an instance of the only object, must be type TMainSettings. call SetSettingsType first}
+function GetMainSettings: TMainSettings;
+begin
+  assert(GetSettings is TMainSettings, 'call SetSettingsType with correct type');
+  Result := GetSettings as TMainSettings;
 end;
 
 end.

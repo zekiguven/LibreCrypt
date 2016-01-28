@@ -131,13 +131,16 @@ Commented out; not used atm
 implementation
 
 uses
-  Controls, Forms,
+//delphi
+   Controls, Forms,  registry,
+//lc utils
+lcConsts,
   lcDialogs,
   OTFEFreeOTFE_U,
   OTFEFreeOTFEBase_U,
-  registry,
+
   SDUi18n,
-  SDUProgressDlg,
+  dlgProgress,
   SDUWindows64;
 
 const
@@ -546,7 +549,7 @@ begin
 
 
     _MsgDlg(
-      SDUParamSubstitute(_('Driver %1 installed'), [driverName]) + SDUCRLF +
+      Format(_('Driver %s installed'), [driverName]) + SDUCRLF +
       SDUCRLF + msgSpecific,
       mtInformation
       );
@@ -1009,7 +1012,7 @@ var
   installedOK:      Boolean;
   startedOK:        Boolean;
   currDriverName:   String;
-  progressDlg:      TSDUProgressDialog;
+  progressDlg:      TdlgProgress;
   serviceState:     DWORD;
   prevCursor:       TCursor;
   alreadyInstalled: Boolean;
@@ -1019,7 +1022,7 @@ begin
   progressDlg := nil;
   prevCursor  := Screen.Cursor;
   if showProgress then begin
-    progressDlg := TSDUProgressDialog.Create(nil);
+    progressDlg := TdlgProgress.Create(nil);
   end;
 
   try
@@ -1213,7 +1216,7 @@ begin
     if (serviceHandle <> 0) then begin
       Result := True;
     end else begin
-      _MsgDlg(SDUParamSubstitute(_('Unable to open service for driver "%1"'), [service]) + SDUCRLF +
+      _MsgDlg(Format(_('Unable to open service for driver "%s"'), [service]) + SDUCRLF +
         SDUCRLF + TEXT_NEED_ADMIN,
         mtError
         );

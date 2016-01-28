@@ -27,16 +27,12 @@ inherited frmWizardChangePasswordCreateKeyfile: TfrmWizardChangePasswordCreateKe
     inherited pcWizard: TPageControl
       Width = 608
       Height = 373
-      ActivePage = tsSrcDetails
+      ActivePage = tsPartitionSelect
       ExplicitWidth = 608
       ExplicitHeight = 373
       object tsFileOrPartition: TTabSheet
         Caption = 'Container File or Partition'
         ImageIndex = 7
-        ExplicitLeft = 0
-        ExplicitTop = 0
-        ExplicitWidth = 0
-        ExplicitHeight = 0
         DesignSize = (
           600
           345)
@@ -66,12 +62,12 @@ inherited frmWizardChangePasswordCreateKeyfile: TfrmWizardChangePasswordCreateKe
           Anchors = [akLeft, akRight, akBottom]
           Caption = 'File or Partition'
           Items.Strings = (
-            '1st of two'
-            '2nd of two')
+            'File'
+            'Partition')
           TabOrder = 1
           OnClick = rgFileOrPartitionClick
         end
-        inline TSDUDiskPartitionsPanel1: TfmeDiskPartitionsPanel
+        inline TSDUDiskPartitionsPanel1: TfmeSDUDiskPartitions
           Left = 3
           Top = 179
           Width = 590
@@ -93,10 +89,6 @@ inherited frmWizardChangePasswordCreateKeyfile: TfrmWizardChangePasswordCreateKe
       object tsSrcFile: TTabSheet
         Caption = 'Source file'
         ImageIndex = 6
-        ExplicitLeft = 0
-        ExplicitTop = 0
-        ExplicitWidth = 0
-        ExplicitHeight = 0
         DesignSize = (
           600
           345)
@@ -202,7 +194,7 @@ inherited frmWizardChangePasswordCreateKeyfile: TfrmWizardChangePasswordCreateKe
             Height = 235
             ExplicitWidth = 585
             ExplicitHeight = 235
-            inherited SDUDiskPartitionsPanel1: TfmeDiskPartitionsPanel
+            inherited SDUDiskPartitionsPanel1: TfmeSDUDiskPartitions
               Height = 207
               ExplicitHeight = 207
             end
@@ -227,7 +219,7 @@ inherited frmWizardChangePasswordCreateKeyfile: TfrmWizardChangePasswordCreateKe
           end
           inherited ilErrorWarning: TImageList
             Bitmap = {
-              494C010103000400D00010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+              494C010103000400140110001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
               0000000000003600000028000000400000001000000001002000000000000010
               0000000000000000000000000000000000000000000000000000000000000000
               0000000000000000000000000000000000000000000000000000000000000000
@@ -370,10 +362,6 @@ inherited frmWizardChangePasswordCreateKeyfile: TfrmWizardChangePasswordCreateKe
       end
       object tsSrcDetails: TTabSheet
         Caption = 'Src Details'
-        ExplicitLeft = 0
-        ExplicitTop = 0
-        ExplicitWidth = 0
-        ExplicitHeight = 0
         DesignSize = (
           600
           345)
@@ -384,14 +372,6 @@ inherited frmWizardChangePasswordCreateKeyfile: TfrmWizardChangePasswordCreateKe
           Height = 13
           Anchors = [akLeft, akBottom]
           Caption = '&Offset:'
-        end
-        object Label1: TLabel
-          Left = 10
-          Top = 74
-          Width = 89
-          Height = 13
-          Caption = 'Current key&phrase:'
-          FocusControl = preSrcUserKey
         end
         object Label4: TLabel
           Left = 10
@@ -438,24 +418,6 @@ inherited frmWizardChangePasswordCreateKeyfile: TfrmWizardChangePasswordCreateKe
           ParentFont = False
           WordWrap = True
         end
-        object preSrcUserKey: TOTFEFreeOTFE_PasswordRichEdit
-          Left = 144
-          Top = 71
-          Width = 441
-          Height = 154
-          Anchors = [akLeft, akTop, akRight, akBottom]
-          Font.Charset = ANSI_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -11
-          Font.Name = 'MS Sans Serif'
-          Font.Style = []
-          Lines.Strings = (
-            'preSrcUserKey')
-          ParentFont = False
-          ScrollBars = ssBoth
-          TabOrder = 0
-          OnChange = preSrcUserKeyChange
-        end
         object seSrcSaltLength: TSpinEdit64
           Left = 144
           Top = 241
@@ -463,7 +425,7 @@ inherited frmWizardChangePasswordCreateKeyfile: TfrmWizardChangePasswordCreateKe
           Height = 22
           Anchors = [akLeft, akBottom]
           Increment = 1
-          TabOrder = 1
+          TabOrder = 0
           OnChange = seSaltLengthChange
         end
         object seSrcKeyIterations: TSpinEdit64
@@ -473,7 +435,7 @@ inherited frmWizardChangePasswordCreateKeyfile: TfrmWizardChangePasswordCreateKe
           Height = 22
           Anchors = [akLeft, akBottom]
           Increment = 1
-          TabOrder = 3
+          TabOrder = 2
         end
         object se64UnitOffset: TSDUSpin64Unit_Storage
           Left = 145
@@ -482,7 +444,7 @@ inherited frmWizardChangePasswordCreateKeyfile: TfrmWizardChangePasswordCreateKe
           Height = 29
           Anchors = [akLeft, akBottom]
           AutoScroll = True
-          TabOrder = 2
+          TabOrder = 1
           Units.Strings = (
             'bytes'
             'KB'
@@ -493,6 +455,30 @@ inherited frmWizardChangePasswordCreateKeyfile: TfrmWizardChangePasswordCreateKe
           MaxLength = 0
           ReadOnly = False
           OnChange = se64OffsetChange
+        end
+        inline frmePassword1: TfrmePassword
+          Left = 3
+          Top = 44
+          Width = 587
+          Height = 195
+          TabOrder = 3
+          ExplicitLeft = 3
+          ExplicitTop = 44
+          ExplicitWidth = 587
+          ExplicitHeight = 195
+          inherited lblKeyPhrase: TLabel
+            Left = 3
+            Width = 56
+            Anchors = [akLeft, akTop, akRight]
+            ExplicitLeft = 3
+            ExplicitWidth = 56
+          end
+          inherited mmShown: TMemo
+            Width = 505
+            Height = 174
+            ExplicitWidth = 505
+            ExplicitHeight = 174
+          end
         end
       end
       object tsDestFile: TTabSheet
@@ -632,14 +618,6 @@ inherited frmWizardChangePasswordCreateKeyfile: TfrmWizardChangePasswordCreateKe
             Width = 567
             ExplicitLeft = 0
             ExplicitWidth = 547
-          end
-          inherited Label17: TLabel
-            Top = 84
-            ExplicitTop = 84
-          end
-          inherited Label3: TLabel
-            Top = 148
-            ExplicitTop = 148
           end
           inherited lblStrength: TLabel
             Top = 212

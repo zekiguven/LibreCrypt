@@ -11,7 +11,7 @@ unit CommonConsts;
 interface
 
 const
-  { TODO -otdk -cclean : seems a lot of repitition of these consts }
+  { done -otdk -cclean : seems a lot of repitition of these consts }
   // Homepage...
   URL_HOMEPAGE = 'http://LibreCrypt.eu/';
   // Download URL...
@@ -25,7 +25,6 @@ resourcestring
 
  // "English" is required as both a const, and a resourcestring (to be included
  // in the .po file)
-const
   CONST_LANGUAGE_ENGLISH = 'English'; // Hardcoded "English"
 
 resourcestring

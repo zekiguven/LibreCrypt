@@ -34,16 +34,9 @@ object frmKeyEntryFreeOTFE: TfrmKeyEntryFreeOTFE
       Height = 200
       Caption = 'Security details'
       TabOrder = 0
-      object Label1: TLabel
-        Left = 12
-        Top = 24
-        Width = 53
-        Height = 13
-        Caption = '&Keyphrase:'
-      end
       object Label6: TLabel
         Left = 12
-        Top = 92
+        Top = 83
         Width = 34
         Height = 13
         Caption = '&Keyfile:'
@@ -57,30 +50,13 @@ object frmKeyEntryFreeOTFE: TfrmKeyEntryFreeOTFE
         Caption = '&Drive:'
         FocusControl = cbDrive
       end
-      object preUserKey: TOTFEFreeOTFE_PasswordRichEdit
-        Left = 100
-        Top = 20
-        Width = 429
-        Height = 61
-        Font.Charset = ANSI_CHARSET
-        Font.Color = clWindowText
-        Font.Height = -11
-        Font.Name = 'MS Sans Serif'
-        Font.Style = []
-        Lines.Strings = (
-          'preUserKey')
-        ParentFont = False
-        ScrollBars = ssBoth
-        TabOrder = 0
-        OnKeyDown = preUserKeyKeyDown
-      end
       object cbDrive: TComboBox
         Left = 100
         Top = 143
         Width = 113
         Height = 21
         Style = csDropDownList
-        TabOrder = 5
+        TabOrder = 4
         Items.Strings = (
           'Z:')
       end
@@ -89,25 +65,25 @@ object frmKeyEntryFreeOTFE: TfrmKeyEntryFreeOTFE
         Top = 170
         Width = 293
         Height = 17
-        Caption = 'Mount &readonly'
-        TabOrder = 6
+        Caption = 'Open &readonly'
+        TabOrder = 5
       end
       object cbPKCS11CDB: TComboBox
-        Left = 192
+        Left = 191
         Top = 116
         Width = 145
         Height = 21
         Style = csDropDownList
-        TabOrder = 4
+        TabOrder = 3
         OnChange = cbPKCS11CDBChange
       end
       object rbKeyfileFile: TRadioButton
-        Left = 100
-        Top = 92
+        Left = 101
+        Top = 83
         Width = 85
         Height = 17
         Caption = '&File:'
-        TabOrder = 1
+        TabOrder = 0
         OnClick = rbKeyfileFileClick
       end
       object rbKeyfilePKCS11: TRadioButton
@@ -116,23 +92,68 @@ object frmKeyEntryFreeOTFE: TfrmKeyEntryFreeOTFE
         Width = 85
         Height = 17
         Caption = 'PKCS#&11:'
-        TabOrder = 3
+        TabOrder = 2
         OnClick = rbKeyfilePKCS11Click
       end
-      object feKeyfile: TSDUFilenameEdit
-        Left = 192
-        Top = 88
-        Width = 337
-        Height = 21
-        Constraints.MaxHeight = 21
-        Constraints.MinHeight = 21
-        TabOrder = 2
-        TabStop = False
-        FilterIndex = 0
-        OnChange = feKeyfileChange
+      inline feKeyfile: TSDUFilenameEdit
+        Left = 176
+        Top = 81
+        Width = 353
+        Height = 29
+        TabOrder = 1
+        ExplicitLeft = 176
+        ExplicitTop = 81
+        ExplicitWidth = 353
+        ExplicitHeight = 29
         DesignSize = (
-          337
-          21)
+          353
+          29)
+        inherited edFilename: TEdit
+          Width = 208
+          ExplicitWidth = 208
+        end
+        inherited pbBrowse: TButton
+          Left = 230
+          Top = 2
+          ExplicitLeft = 230
+          ExplicitTop = 2
+        end
+        inherited OpenDialog1: TSDUOpenDialog
+          Left = 104
+          Top = 0
+        end
+        inherited SaveDialog1: TSDUSaveDialog
+          Left = 140
+          Top = 0
+        end
+      end
+      inline frmePassword1: TfrmePassword
+        Left = 3
+        Top = 20
+        Width = 539
+        Height = 57
+        TabOrder = 6
+        ExplicitLeft = 3
+        ExplicitTop = 20
+        ExplicitWidth = 539
+        ExplicitHeight = 57
+        inherited lblKeyPhrase: TLabel
+          Top = 0
+          Width = 56
+          Anchors = [akLeft, akTop, akRight]
+          ExplicitTop = 0
+          ExplicitWidth = 56
+        end
+        inherited mmShown: TMemo
+          Left = 84
+          Top = 1
+          Width = 442
+          Height = 53
+          ExplicitLeft = 84
+          ExplicitTop = 1
+          ExplicitWidth = 442
+          ExplicitHeight = 53
+        end
       end
     end
   end
@@ -234,14 +255,14 @@ object frmKeyEntryFreeOTFE: TfrmKeyEntryFreeOTFE
         Top = 137
         Width = 215
         Height = 77
-        Caption = 'Mount options'
+        Caption = 'Open options'
         TabOrder = 1
         object Label9: TLabel
           Left = 12
           Top = 24
-          Width = 47
+          Width = 43
           Height = 13
-          Caption = '&Mount as:'
+          Caption = '&Open as:'
           FocusControl = cbMediaType
         end
         object cbMediaType: TComboBox

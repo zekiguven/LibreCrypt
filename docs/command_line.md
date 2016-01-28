@@ -3,7 +3,7 @@
 <meta name="description" content="LibreCrypt: An Open-Source transparent encryption program for PCs. With this software, you can create one or more &quot;containers&quot; on your PC - which appear as disks, anything written to these disks is automatically encrypted before being stored on your hard drive.">
 
 <meta name="author" content="Sarah Dean">
-<meta name="copyright" content="Copyright 2004, 2005, 2006, 2007, 2008 Sarah Dean">
+<meta name="copyright" content="Copyright 2004, 2005, 2006, 2007, 2008 Sarah Dean 2015 tdk">
 
 <TITLE>Command Line Interface</TITLE>
 
@@ -71,7 +71,7 @@ LibreCrypt has command line parameters so most operations can be run from the co
 In the LibreCrypt GUI and documentation aimed at new users, easy to understand words like 'open', 'container' and 'lock' are used. In documentation aimed at more advanced users (like this page) standard file system terms are used, as follows:
 <TABLE>
   <TBODY>    
-		<TR> <TD>container Volume</TD>				<TD> A container                    </TD>  </TR>
+		<TR> <TD>LibreCrypt Volume</TD>				<TD> A container                    </TD>  </TR>
 		<TR> <TD>Volume</TD>							<TD> A 'Container', perhaps for a legacy app </TD>  </TR>
 		<TR> <TD>Mount a volume</TD>			<TD> Open a Container     </TD>  </TR>
 		<TR> <TD>Dismount a volume</TD>		<TD> Close a Container </TD>  </TR>

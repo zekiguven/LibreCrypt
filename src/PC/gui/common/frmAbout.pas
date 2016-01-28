@@ -49,13 +49,7 @@ type
 
   end;
 
-const
-   {$IFDEF FREEOTFE_MAIN}
-  APP_DESCRIPTION = 'LibreCrypt: Open-Source Transparent Encryption';
-  {$ELSE}
-  APP_DESCRIPTION =
-    'LibreCrypt Explorer: Access containers without administrator rights';
-  {$ENDIF}
+
 implementation
 
 {$R *.DFM}
@@ -67,11 +61,19 @@ uses
   //sdu & LibreCrypt utils  - layer 1
   SDUGeneral,
   SDUi18n,
-
-  lcConsts    // for APP_BETA_BUILD
+  lcConsts,    // for APP_BETA_BUILD
   // LibreCrypt forms - layer 2
+  frmVersionCheck
   //main form - layer 3
   ;
+
+const
+   {$IFDEF FREEOTFE_MAIN}
+  APP_DESCRIPTION = 'LibreCrypt: Open-Source Transparent Encryption';
+  {$ELSE}
+  APP_DESCRIPTION =
+    'LibreCrypt Explorer: Access containers without administrator rights';
+  {$ENDIF}
 
 procedure TfrmAbout.FormCreate(Sender: TObject);
 begin
@@ -83,10 +85,10 @@ procedure TfrmAbout.FormShow(Sender: TObject);
 const
   CONTROL_MARGIN = 10;
 var
-  majorVersion:    Integer;
-  minorVersion:    Integer;
-  revisionVersion: Integer;
-  buildVersion:    Integer;
+  version:    TBuildVersion;
+//  minorVersion:    Integer;
+//  revisionVersion: Integer;
+//  buildVersion:    Integer;
   OTFEVersion:     String;
   //  descAdjustDown:  Integer;
 begin
@@ -105,7 +107,7 @@ begin
 
   imgIcon.Picture.Assign(Application.Icon);
 
-  SDUGetVersionInfo('', majorVersion, minorVersion, revisionVersion, buildVersion);
+  SDUGetVersionInfo('', version);
   lblAppID.Caption := 'v' + SDUGetVersionInfoString('');
   if APP_BETA_BUILD > -1 then begin
     lblAppID.Caption := lblAppID.Caption + ' BETA ' + IntToStr(APP_BETA_BUILD);
@@ -117,7 +119,7 @@ begin
   if GetFreeOTFEBase().Active then begin
     OTFEVersion := GetFreeOTFEBase().VersionStr();
     if (OTFEVersion <> '') then begin
-      OTFEVersion := Format(_('FreeOTFE driver: %s'), [OTFEVersion]);
+      OTFEVersion := Format(_('LibreCrypt driver: %s'), [OTFEVersion]);
     end;
   end else begin
     OTFEVersion := _('The main LibreCrypt driver is either not installed, or not started');

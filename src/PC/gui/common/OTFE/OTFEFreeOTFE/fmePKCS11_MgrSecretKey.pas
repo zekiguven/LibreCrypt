@@ -37,14 +37,13 @@ type
   private
     FTokenSecretKeys: TPKCS11SecretKeyPtrArray;
 
-    procedure PopulateSecretKeys();
-    procedure ResizeColumns();
+    procedure _PopulateSecretKeys();
+    procedure _ResizeColumns();
 
-    function EncryptDecryptCDB(encryptNotDecrypt: Boolean): Boolean;
+    function _EncryptDecryptCDB(encryptNotDecrypt: Boolean): Boolean;
   protected
     procedure Refresh(); override;
   public
-    //    FreeOTFEObj: TOTFEFreeOTFEBase;
     procedure Initialize(); override;
     procedure EnableDisableControls(); override;
   end;
@@ -54,11 +53,12 @@ implementation
 {$R *.dfm}
 
 uses
+//lc utils
   frmPKCS11NewSecretKey,
   frmSelectVolumeAndOffset,
   SDUGeneral,
   SDUi18n,
-  Shredder;
+  Shredder,lcConsts;
 
 {$IFDEF _NEVER_DEFINED}
 // This is just a dummy const to fool dxGetText when extracting message
@@ -90,7 +90,7 @@ begin
   newCol.Caption  := _('Keysize');
   newCol.Autosize := True;
 
-  PopulateSecretKeys();
+  _PopulateSecretKeys();
 
   EnableDisableControls();
 
@@ -115,11 +115,11 @@ end;
 
 procedure TfmePKCS11_MgrSecretKey.Refresh();
 begin
-  PopulateSecretKeys();
+  _PopulateSecretKeys();
   inherited;
 end;
 
-procedure TfmePKCS11_MgrSecretKey.PopulateSecretKeys();
+procedure TfmePKCS11_MgrSecretKey._PopulateSecretKeys();
 var
   errMsg:  String;
   i:       Integer;
@@ -157,7 +157,7 @@ begin
     screen.Cursor := csrPrev;
   end;
 
-  ResizeColumns();
+  _ResizeColumns();
 end;
 
 procedure TfmePKCS11_MgrSecretKey.actDeleteExecute(Sender: TObject);
@@ -207,8 +207,8 @@ begin
         for i := 0 to (stlDeletedOK.Count - 1) do begin
           msgList := msgList + '  ' + stlDeletedOK[i] + SDUCRLF;
         end;
-        msg := SDUParamSubstitute(_('The following keys were deleted successfully:' +
-          SDUCRLF + SDUCRLF + '%1'), [msgList]);
+        msg := Format(_('The following keys were deleted successfully:' +
+          SDUCRLF + SDUCRLF + '%s'), [msgList]);
       end;
       if (stlDeletedFail.Count > 0) then begin
         msgType := mtWarning;
@@ -217,8 +217,8 @@ begin
           msgList := msgList + '  ' + stlDeletedFail[i] + SDUCRLF;
         end;
         msg := msg + SDUCRLF;
-        msg := msg + SDUParamSubstitute(_('The following keys could not be deleted:' +
-          SDUCRLF + SDUCRLF + '%1'), [msgList]);
+        msg := msg + Format(_('The following keys could not be deleted:' +
+          SDUCRLF + SDUCRLF + '%s'), [msgList]);
       end;
 
       SDUMessageDlg(msg, msgType);
@@ -236,14 +236,14 @@ end;
 procedure TfmePKCS11_MgrSecretKey.actEncryptExecute(Sender: TObject);
 begin
   inherited;
-  EncryptDecryptCDB(True);
+  _EncryptDecryptCDB(True);
 
 end;
 
 procedure TfmePKCS11_MgrSecretKey.actDecryptExecute(Sender: TObject);
 begin
   inherited;
-  EncryptDecryptCDB(False);
+  _EncryptDecryptCDB(False);
 
 end;
 
@@ -274,7 +274,7 @@ begin
 
 end;
 
-function TfmePKCS11_MgrSecretKey.EncryptDecryptCDB(encryptNotDecrypt: Boolean): Boolean;
+function TfmePKCS11_MgrSecretKey._EncryptDecryptCDB(encryptNotDecrypt: Boolean): Boolean;
 var
   cdbBefore:      Ansistring;
   cdbAfter:       Ansistring;
@@ -322,17 +322,17 @@ begin
         end;
 
         if (offset <> 0) then begin
-          Result := SDUConfirmYN(SDUParamSubstitute(
+          Result := SDUConfirmYN(Format(
             _('Are you sure you wish to use PKCS#11 secret key:' + SDUCRLF +
-            SDUCRLF + '%1' + SDUCRLF + SDUCRLF +
-            'to %2 the CDB starting from offset %3 within container:' +
-            SDUCRLF + SDUCRLF + '%4'), [SecretKey.XLabel, secureUnsecure,
+            SDUCRLF + '%s' + SDUCRLF + SDUCRLF +
+            'to %s the header starting from offset %d within container:' +
+            SDUCRLF + SDUCRLF + '%s'), [SecretKey.XLabel, secureUnsecure,
             offset, fileToSecure]));
         end else begin
-          Result := SDUConfirmYN(SDUParamSubstitute(
-            _('Are you sure you wish to %1 the container/keyfile:' + SDUCRLF +
-            SDUCRLF + '%2' + SDUCRLF + SDUCRLF +
-            'using the PKCS#11 secret key:' + SDUCRLF + SDUCRLF + '%3'),
+          Result := SDUConfirmYN(Format(
+            _('Are you sure you wish to %s the container/keyfile:' + SDUCRLF +
+            SDUCRLF + '%s' + SDUCRLF + SDUCRLF +
+            'using the PKCS#11 secret key:' + SDUCRLF + SDUCRLF + '%s'),
             [secureUnsecure, fileToSecure, SecretKey.XLabel]));
         end;
       end;
@@ -341,7 +341,7 @@ begin
       if Result then begin
         if not (GetFreeOTFEBase().ReadRawVolumeCriticalData(
           fileToSecure, offset, cdbBefore)) then begin
-          SDUMessageDlg(_('Unable to read keyfile/container CDB'), mtError);
+          SDUMessageDlg(_('Unable to read keyfile/container header'), mtError);
           Result := False;
         end;
       end;
@@ -380,12 +380,12 @@ begin
   end;
 
   if Result then begin
-    SDUMessageDlg(SDUParamSubstitute(_('Container/keyfile now %1'), [secureUnsecure]), mtInformation);
+    SDUMessageDlg(Format(_('Container/keyfile now %s'), [secureUnsecure]), mtInformation);
   end;
 
 end;
 
-procedure TfmePKCS11_MgrSecretKey.ResizeColumns();
+procedure TfmePKCS11_MgrSecretKey._ResizeColumns();
 const
   // Resize the columns such that they're as wide as the widest item/subitem
   // text

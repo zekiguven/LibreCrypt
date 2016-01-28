@@ -13,11 +13,12 @@ interface
 
 uses
   //delphi and 3rd party libs - layer 0
-  Classes, SysUtils,
+  Classes, SysUtils, system.Types, Vcl.Controls, Vcl.StdCtrls,
   //sdu & LibreCrypt utils - layer 1
   fmeSDUBlocks,
-  SDUGeneral,
-  SDUObjectManager, Vcl.Controls, Vcl.StdCtrls;
+  lcTypes,
+  PartitionTools,//for TSDUPartitionInfo
+  SDUObjectManager;
 
 type
   // Exceptions...
@@ -28,10 +29,15 @@ const
   NO_DISK      = -1;
   NO_PARTITION = -1;
 
+
+
 resourcestring
   UNABLE_TO_GET_DISK_LAYOUT = 'Unable to get disk layout for disk: %u';
 
 type
+
+
+
   TfmeSDUDiskPartitions = class (TfmeSDUBlocks)
   private
     FDiskNumber:           Integer;
@@ -48,6 +54,7 @@ type
     // Strings are the device names for the drives, Objects are the ordinal
     // value of the drive letter
     driveDevices: TStringList;
+    fSyntheticDriveLayout: Boolean;
 
     procedure SetDiskNumber(DiskNo: Integer);
     function GetPartitionInfo(idx: Integer): TPartitionInformationEx;
@@ -57,23 +64,28 @@ type
 
     procedure RefreshPartitions();
   protected
-    function GetDriveLayout(physicalDiskNo: Integer;
-      var driveLayout: TSDUDriveLayoutInformationEx): Boolean; virtual;
-    function IgnorePartition(partInfo: TPartitionInformationEx): Boolean; virtual;
+         function GetDriveLayout(physicalDiskNo: Integer;
+      var driveLayout: TSDUDriveLayoutInformationEx): Boolean;
+
+    function GetDriveLayout_base(physicalDiskNo: Integer;
+      var driveLayout: TSDUDriveLayoutInformationEx): Boolean;
+    function IgnorePartition_base(partInfo: TPartitionInformationEx): Boolean;
+        function IgnorePartition(partInfo: TPartitionInformationEx): Boolean;
 
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy(); override;
 
+    function IsValidPartition(idx: Integer) :Boolean;
     property PartitionInfo[idx: Integer]: TPartitionInformationEx Read GetPartitionInfo;
-    property DriveLetter[idx: Integer]: Char Read GetDriveLetter;
+    property DriveLetterForPart[idx: Integer]: Char Read GetDriveLetter;
 
     procedure Clear(); override;
 
   published
     // Show partitions with partition number zero
     // USE WITH CAUTION! Referencing the partitions with partition number zero
-    // mean the entire drive! (Partition number zero) 
+    // mean the entire drive! (Partition number zero)
     property ShowPartitionsWithPNZero: Boolean Read FShowPartitionsWithPNZero
       Write FShowPartitionsWithPNZero default False;
 
@@ -82,25 +94,33 @@ type
 
     property DriveLayoutInformation: TSDUDriveLayoutInformationEx Read FDriveLayoutInfo;
     property DriveLayoutInformationValid: Boolean Read FDriveLayoutInfoValid;
+       property SyntheticDriveLayout: Boolean Read fSyntheticDriveLayout;
   end;
 
-//procedure Register;
+// Get layout of disk
+function SDUGetDriveLayout(physicalDiskNo: Integer;
+  var driveLayout: TSDUDriveLayoutInformationEx): Boolean;
+function SDUGetDriveLayout_Device(driveDevice: String;
+  var driveLayout: TSDUDriveLayoutInformationEx): Boolean;
 
 implementation
 
 uses
-  Math,
-  Windows;
+     //delphi & libs
+       Math,
+  Windows,
+  //sdu & LibreCrypt utils
+       OTFEFreeOTFEBase_U,
+  sdugeneral,
+  lcConsts
+   // LibreCrypt forms
+
+  ;
 
 {$R *.dfm}
 
 const
   ULL_ONEMEG: ULONGLONG = 1024 * 1024;
-
- //procedure Register;
- //begin
- //  RegisterComponents('SDeanUtils', [TfmeSDUDiskPartitions]);
- //end;
 
 
 constructor TfmeSDUDiskPartitions.Create(AOwner: TComponent);
@@ -164,7 +184,7 @@ begin
       FDriveLayoutInfoValid := True;
       oneMeg                := 1024 * 1024;
       cnt                   := 0;
-      for i := 0 to (FDriveLayoutInfo.PartitionCount - 1) do begin
+      for i := 0 to (Integer(FDriveLayoutInfo.PartitionCount) - 1) do begin
         if IgnorePartition(FDriveLayoutInfo.PartitionEntry[i]) then begin
           // Extended partition, or similar
           continue;
@@ -221,7 +241,7 @@ begin
             prettyPartitionType := SDUGptPartitionType(currPartition.gpt.PartitionType, False);
           end else begin
             //raw
-            prettyPartitionType := 'RAW psartition';
+            prettyPartitionType := 'RAW partition';
           end;
         end;
 
@@ -229,6 +249,10 @@ begin
         blk.Caption    := SDUFormatAsBytesUnits(currPartition.PartitionLength) +
           SDUCRLF + drive;
         blk.SubCaption := prettyPartitionType;
+        if currPartition.PartitionStyle = PARTITION_STYLE_GPT then begin
+          blk.SubCaption := blk.SubCaption + ' "' + currPartition.Gpt.Name +'" ' +#10#13 + 'GUID: '+GUIDToString(currPartition.Gpt.PartitionId);
+        end;
+
         //'Idx: '+inttostr(idx)+SDUCRLF+
         //'PN: '+inttostr(currPartition.PartitionNumber)+SDUCRLF+
         //'PT: 0x'+inttohex(currPartition.PartitionType, 2);
@@ -259,6 +283,12 @@ begin
   FDiskNumber := DiskNo;
   RefreshPartitions();
   Invalidate();
+end;
+
+function TfmeSDUDiskPartitions.IsValidPartition(idx: Integer): Boolean;
+begin
+result :=  (idx >= 0) and (idx< FMapBlockToPartition.count) ;
+
 end;
 
 function TfmeSDUDiskPartitions.GetPartitionInfo(idx: Integer): TPartitionInformationEx;
@@ -323,25 +353,79 @@ var
 begin
   Result := #0;
 
-  if (idx >= 0) then begin
-    partInfo := PartitionInfo[idx];
+  if (idx >= 0) and (idx< FMapBlockToPartition.count) then begin
+    partInfo := GetPartitionInfo(idx);
     Result   := GetDriveLetterForPartition(DiskNumber, partInfo.PartitionNumber);
   end;
 
 end;
 
-function TfmeSDUDiskPartitions.GetDriveLayout(physicalDiskNo: Integer;
+function TfmeSDUDiskPartitions.GetDriveLayout_base(physicalDiskNo: Integer;
   var driveLayout: TSDUDriveLayoutInformationEx): Boolean;
 begin
   Result := SDUGetDriveLayout(DiskNumber, FDriveLayoutInfo);
 end;
 
-function TfmeSDUDiskPartitions.IgnorePartition(partInfo: TPartitionInformationEx): Boolean;
+
+
+function TfmeSDUDiskPartitions.GetDriveLayout(physicalDiskNo: Integer;
+  var driveLayout: TSDUDriveLayoutInformationEx): Boolean;
+var
+  hddDevices: TStringList;
+  title:      TStringList;
+  i:          Integer;
+  partNo:     Integer;
+  tmpPart:    TPartitionInformationEx;
+begin
+  fSyntheticDriveLayout := False;
+  Result                := GetDriveLayout_base(physicalDiskNo, driveLayout);
+
+  if not (Result) then begin
+    // Fallback...
+
+    hddDevices := TStringList.Create();
+    title      := TStringList.Create();
+    try
+      if GetFreeOTFEBase.HDDDeviceList(physicalDiskNo, hddDevices, title) then begin
+        driveLayout.PartitionCount := 0;
+        driveLayout.DriveLayoutInformation.Mbr.Signature      := $00000000;
+
+        for i := 0 to (hddDevices.Count - 1) do begin
+          partNo := Integer(hddDevices.Objects[i]);
+          if (partNo > 0) then begin
+            Inc(driveLayout.PartitionCount);
+            tmpPart.PartitionStyle    := PARTITION_STYLE_MBR;
+            tmpPart.StartingOffset      := 0;
+            tmpPart.PartitionLength     := 0;
+             tmpPart.PartitionNumber     := partNo;
+             tmpPart.RewritePartition    := False;
+            tmpPart.Mbr.HiddenSectors       := 0;
+            tmpPart.mbr. PartitionType       := 0;
+            tmpPart.mbr.BootIndicator       := False;
+            tmpPart.mbr.RecognizedPartition := False;
+
+            driveLayout.PartitionEntry[(driveLayout.PartitionCount - 1)] := tmpPart;
+          end;
+        end;
+
+        fSyntheticDriveLayout := True;
+        Result                := True;
+      end;
+
+    finally
+      hddDevices.Free();
+      title.Free();
+    end;
+
+  end;
+end;
+
+function TfmeSDUDiskPartitions.IgnorePartition_base(partInfo: TPartitionInformationEx): Boolean;
 begin
   Result := (
     // USE CAUTION! We don't want the user selecting a partition, and
     // ending up using the whole HDD (partition number zero)
-    (not (ShowPartitionsWithPNZero) and (partInfo.PartitionNumber = 0)) or
+    (not (FShowPartitionsWithPNZero) and (partInfo.PartitionNumber = 0)) or
     // Piddly partitions; extended partitions, etc
     (partInfo.PartitionLength < ULL_ONEMEG) or
     // $05/$0F = extended partition definition
@@ -349,5 +433,80 @@ begin
     (partInfo.mbr.PartitionType = $05) or (partInfo.mbr.PartitionType = $0F)));
 
 end;
+
+
+function TfmeSDUDiskPartitions.IgnorePartition(partInfo: TPartitionInformationEx): Boolean;
+begin
+  if fSyntheticDriveLayout then begin
+    // Synthetic drive layout; don't ignore any partitions
+    Result := False;
+  end else begin
+    Result := IgnorePartition_base(partInfo);
+  end;
+end;
+
+
+
+// ----------------------------------------------------------------------------
+function SDUGetDriveLayout(physicalDiskNo: Integer;
+  var driveLayout: TSDUDriveLayoutInformationEx): Boolean;
+var
+  deviceName: String;
+begin
+  deviceName := Format(FMT_DEVICENAME_HDD_PHYSICAL_DISK, [physicalDiskNo]);
+  Result     := SDUGetDriveLayout_Device(deviceName, driveLayout);
+end;
+
+
+
+// ----------------------------------------------------------------------------
+function SDUGetDriveLayout_Device(driveDevice: String;
+  var driveLayout: TSDUDriveLayoutInformationEx): Boolean;
+var
+  fileHandle:      THandle;
+  //  DIOCBufferOut: TSDUDriveLayoutInformation;
+  bytesReturned:   DWORD;
+  DriveLayoutInfo: TSDUDriveLayoutInformationEx;
+  //    str :string;
+begin
+  Result     := False;
+  // http://stackoverflow.com/questions/17110543/how-to-retrieve-the-disk-signature-of-all-the-disks-in-windows-using-delphi-7 says better way
+  // Open file and get it's size
+  fileHandle := CreateFile(PChar(driveDevice),
+                   // pointer to name of the file
+    0,             // access (read-write) mode
+    (FILE_SHARE_READ or FILE_SHARE_WRITE),
+        // share mode
+    nil,                      // pointer to security attributes
+    OPEN_EXISTING,            // how to create
+    0,  // file attributes
+    0                         // handle to file with attributes to copy
+    );
+
+  if (fileHandle <> INVALID_HANDLE_VALUE) then begin
+    if DeviceIoControl(fileHandle, IOCTL_DISK_GET_DRIVE_LAYOUT_EX, nil, 0,
+      @DriveLayoutInfo, SizeOf(DriveLayoutInfo), BytesReturned, nil) then begin
+      driveLayout := DriveLayoutInfo;
+  {
+        case DriveLayoutInfo.PartitionStyle of
+        PARTITION_STYLE_MBR:
+          str :=  driveDevice + ', MBR, ' +
+            IntToHex(DriveLayoutInfo.DriveLayoutInformation.Mbr.Signature, 8);
+        PARTITION_STYLE_GPT:
+         str := driveDevice + ', GPT, ' +
+            GUIDToString(DriveLayoutInfo.DriveLayoutInformation.Gpt.DiskId);
+        PARTITION_STYLE_RAW:
+          str := driveDevice + ', RAW';
+        end;
+         ShowMessage(str);
+         }
+      Result      := True;
+    end;
+
+    CloseHandle(fileHandle);
+  end;
+
+end;
+
 
 end.

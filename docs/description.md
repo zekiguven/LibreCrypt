@@ -6,7 +6,7 @@
 "LibreCrypt: An Open-Source transparent encryption program for PCs. With this software, you can create one or more &quot;containers&quot; on your PC - which appear as disks, anything written to these disks is automatically encrypted before being stored on your hard drive.">
 
 <meta name="author" content="Sarah Dean">
-<meta name="copyright" content="Copyright 2004, 2005, 2006, 2007, 2008 Sarah Dean">
+<meta name="copyright" content="Copyright 2004, 2005, 2006, 2007, 2008 Sarah Dean 2015 tdk">
 
 
 <TITLE>Introduction</TITLE>
@@ -43,10 +43,10 @@ This software can create "virtual disks" on your computer - anything written to 
 * Linux compatibility (Cryptoloop "losetup", dm-crypt and LUKS supported)
 * Powerful: Supports more hash and encryption algorithms than any other transparent encryption system
 * Available in English, Spanish, German, Italian, French, Czech, Japanese, Croatian, Greek and Russian - with support for other language translations
-* Supports the modern recommended cypher algorithms such as AES, and XTS  
+* Supports the modern recommended cypher algorithms such as AES and XTS  
 * Operates under MS Windows 2000/Vista/Windows 7 platforms
 * "Portable mode" included; LibreCrypt doesn't need to be installed before it can be used - making it ideal for carrying your data securely on USB drives!
-* "Hidden" volumes may be concealed within other containers, providing "plausible deniability"
+* "Hidden" containers may be concealed within other containers, providing "plausible deniability"
 
 ### Technical details
 * Hash algorithms include: MD5, SHA-512, RIPEMD-320, Tiger and _many_ more
@@ -54,11 +54,11 @@ This software can create "virtual disks" on your computer - anything written to 
 * Cypher modes supported include XTS, LRW and CBC (including XTS-AES-128 and XTS-AES-256)
 * Security tokens/smartcards supported for extra (optional) security
 * containers have no "signature" to allow them to be identified as such
-* Encrypted volumes can be either file or partition based.
+* Encrypted containers can be either file or partition based.
 * Modular design allowing 3rd party drivers to be created, incorporating new hash/cypher algorithms
 * Supports password salting (up to 512 bits), reducing the risks presented by dictionary attacks.
 * 'keyfiles' allow multiple users to share a container without sharing keyphrases and support key backup.
-* Volume file timestamps and attributes are reset after dismounting, increasing "plausible deniability"
+* Container file timestamps and attributes are reset after closing, increasing "plausible deniability"
 * containers up to 8,388,608 TB 
 
 Screenshots of LibreCrypt are [here](http://LibreCrypt.eu/screenshots_pc_main.html)

@@ -5,7 +5,7 @@
 <meta name="description" content="LibreCrypt: An Open-Source transparent encryption program for PCs. With this software, you can create one or more &quot;containers&quot; on your PC - which appear as disks, anything written to these disks is automatically encrypted before being stored on your hard drive.">
 
 <meta name="author" content="Sarah Dean">
-<meta name="copyright" content="Copyright 2004, 2005, 2006, 2007, 2008 Sarah Dean">
+<meta name="copyright" content="Copyright 2004, 2005, 2006, 2007, 2008 Sarah Dean 2015 tdk">
 
 
 <TITLE>Portable Mode</TITLE>
@@ -45,7 +45,7 @@ No files are copied to your hard drive when starting/stopping portable mode.
 
  
 <SPAN class="tip">
-Administrator rights are required in order to start and stop portable mode. You _can_ still use LibreCrypt on a computer which you do not have Administrator rights on, but will need to ask an Administrator to install it for you first; see the [installation section](installation_and_upgrading__PC.html) for further details. Alternatively, use [LibreCrypt Explorer](http://LibreCrypt.eu/) instead - which doesn't need drivers at all    
+Administrator rights are required in order to start and stop portable mode. You _can_ still use LibreCrypt on a computer which you do not have Administrator rights on, but will need to ask an Administrator to install it for you first; see the [installation section](installation_and_upgrading__PC.md) for further details. Alternatively, use [LibreCrypt Explorer](http://LibreCrypt.eu/) instead - which doesn't need drivers at all    
 </SPAN>
 
  

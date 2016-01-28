@@ -13,12 +13,15 @@ interface
 
 // -----------------------------------------------------------------------------
 uses
-  classes,
+     //delphi & libs
+       classes,
   Windows, // Needed for UINT, ULONG
   sysUtils,
-  //sdu
+  //sdu & LibreCrypt utils
+      lcTypes,
   sdugeneral,
-  OTFEConsts_U;
+  OTFEConsts_U
+;
 
 // -----------------------------------------------------------------------------
 const
@@ -54,7 +57,7 @@ type
 // -- end Windows standard bits taken from "dbt.h", not included with Delphi --
 
 
-// -----------------------------------------------------------------------------
+
 type
 
   TOTFE = class(TObject)
@@ -72,8 +75,6 @@ type
     //       cannot be set to this state
     procedure SetActive(status: Boolean); virtual;
 
-    // Raises exception if the component isn't active
-    procedure CheckActive();
 
     // Broadcast a message, notifying everyone that a drive has been
     // added/removed
@@ -90,39 +91,13 @@ type
 
     // === Mounting, dismounting drives ========================================
 
-    // Prompt the user for a password (and drive letter if necessary), then
-    // mount the specified volume file
-    // Returns the drive letter of the mounted volume on success, #0 on failure
-    function  Mount(volumeFilename: ansistring; readonly: boolean = FALSE): char; overload; virtual; abstract;
 
-    // As previous Mount, but more than one volumes is specified. Volumes are
-    // mounted using the same password
-    // Sets mountedAs to the drive letters of the mounted volumes, in order.
-    // Volumes that could not be mounted have #0 as their drive letter
-    // Returns TRUE if any of the volumes mounted correctly, otherwise FALSE
-    function  Mount(volumeFilename: string; var mountedAs: DriveLetterString; readonly: boolean = FALSE): boolean; overload; virtual; abstract;
-
-    // Example:
-    //   Set:
-    //     volumeFilenames[0] = c:\test0.dat
-    //     volumeFilenames[1] = c:\test1.dat
-    //     volumeFilenames[2] = c:\test2.dat
-    //   Call Mount described above in which:
-    //     volume test0.dat was sucessfully mounted as W:
-    //     volume test1.dat failed to mount
-    //     volume test2.dat was sucessfully mounted as X:
-    //   Then this function should set:
-    //     mountedAs = 'W.X' (where '.' is #0)
 
     // Given the "mountedAs" parameter set by the above Mount(...) function,
     // this will give a count of the number of volumes mounted successfully, and failed
     procedure CountMountedResults(mountedAs: DriveLetterString; out CntMountedOK: integer; out CntMountFailed: integer); virtual;
 
 
-    // Prompt the user for a device (if appropriate) and password (and drive
-    // letter if necessary), then mount the device selected
-    // Returns the drive letter of the mounted devices on success, #0 on failure
-    function  MountDevices(): DriveLetterString; virtual; abstract;
 
     // Determine if OTFE component can mount devices.
     // Returns TRUE if it can, otherwise FALSE
@@ -209,8 +184,12 @@ type
     // (Can't represent in the base class, but...)
     // function GetDriveInfo(driveLetter: char): TDiskInfo; virtual; abstract;
 
+    // Raises exception if the component isn't active
+    procedure CheckActive();
+
   published
     property Active: boolean read FActive write SetActive;
+    { TODO -otdk -crefactor : remove and replace with return codes from functions }
     property LastErrorCode: integer read FLastErrCode write FLastErrCode default OTFE_ERR_SUCCESS;
 
   end;
@@ -237,8 +216,13 @@ procedure ChangeCWDToSafeDir();
 implementation
 
 uses
-  ShlObj,  // Needed for SHChangeNotify(...), etc
+     //delphi & libs
+    ShlObj,  // Needed for SHChangeNotify(...), etc
   Messages  // Needed for WM_DEVICECHANGE
+  //sdu & LibreCrypt utils
+
+
+
   ;
 
 
@@ -362,17 +346,17 @@ begin
 
     OTFE_ERR_NOT_ACTIVE                : Result := 'Component not active';
     OTFE_ERR_DRIVER_FAILURE            : Result := 'Driver failure';
-    OTFE_ERR_USER_CANCEL               : Result := 'User cancelled operation';
+//    OTFE_ERR_USER_CANCEL               : Result := 'User cancelled operation';
     OTFE_ERR_WRONG_PASSWORD            : Result := 'Wrong Keyphrase entered';
     OTFE_ERR_VOLUME_FILE_NOT_FOUND     : Result := 'Container file not found';
     OTFE_ERR_INVALID_DRIVE             : Result := 'Invalid drive';
-    OTFE_ERR_MOUNT_FAILURE             : Result := 'Mount failure';
-    OTFE_ERR_DISMOUNT_FAILURE          : Result := 'Dismount failure';
+    OTFE_ERR_MOUNT_FAILURE             : Result := 'Open failure';
+    OTFE_ERR_DISMOUNT_FAILURE          : Result := 'Lock failure';
     OTFE_ERR_FILES_OPEN                : Result := 'Files open in container';
-    OTFE_ERR_STREAMING_DATA            : Result := 'Can''t dismount while still streaming data, or was doing so in the last few seconds';
+    OTFE_ERR_STREAMING_DATA            : Result := 'Can''t lock while still streaming data, or was doing so in the last few seconds';
     OTFE_ERR_FILE_NOT_ENCRYPTED_VOLUME : Result := 'File is not an encrypted container';
     OTFE_ERR_UNABLE_TO_LOCATE_FILE     : Result := 'Unable to locate file';
-    OTFE_ERR_DISMOUNT_RECURSIVE        : Result := 'Dismounting recursively mounted drive';
+    OTFE_ERR_DISMOUNT_RECURSIVE        : Result := 'Locking recursively opened drive';
     OTFE_ERR_INSUFFICENT_RIGHTS        : Result := 'Insufficient rights';
     OTFE_ERR_NOT_W9X                   : Result := 'Operation not available under Windows 95/98/ME';
     OTFE_ERR_NOT_WNT                   : Result := 'Operation not available under Windows NT/2000';
@@ -383,7 +367,7 @@ begin
     OTFE_ERR_UNKNOWN_KEYGEN            : Result := 'Unknown key generator';
 
     // ScramDisk
-    OTFE_ERR_UNABLE_MOUNT_COMPRESSED   : Result := 'Can''t mount compressed container';
+    OTFE_ERR_UNABLE_MOUNT_COMPRESSED   : Result := 'Can''t open compressed container';
 
     // PANIC!
     OTFE_ERR_UNKNOWN_ERROR             : Result := 'Unknown error';
@@ -819,10 +803,10 @@ begin
   for i:=1 to length(mountedAs) do    begin
     if (mountedAs[i] = #0) then         begin
       inc(CntMountFailed);
-      end    else      begin
+    end    else      begin
       inc(CntMountedOK);
-      end;
     end;
+  end;
 
 end;
 

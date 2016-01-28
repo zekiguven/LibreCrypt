@@ -274,7 +274,7 @@ uses
 {$WARN UNIT_PLATFORM ON}
 {$ENDIF}
   registry,
-  SDUProgressDlg,
+  dlgProgress,
   SDUDialogs,
   SDUi18n,
   Spin64,  // Required for TSpinEdit64
@@ -354,8 +354,7 @@ end;
 // Add a Windows Vista "Shield" icon to a TButton
 procedure SDUSetUACShieldIcon(button: TButton);
 begin
-  if SDUOSVistaOrLater() then
-    begin
+  if SDUOSVistaOrLater() then      begin
     SendMessage(button.handle, BCM_SETSHIELD, 0, 1);
     end;
 end;
@@ -364,8 +363,7 @@ end;
 // Remova a Windows Vista "Shield" icon to a TButton
 procedure SDUClearUACShieldIcon(button: TButton);
 begin
-  if SDUOSVistaOrLater() then
-    begin
+  if SDUOSVistaOrLater() then      begin
     SendMessage(button.handle, BCM_SETSHIELD, 0, 0);
     end;
 end;

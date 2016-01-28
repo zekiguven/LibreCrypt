@@ -19,10 +19,15 @@ interface
  //       THIS *SHOULDN'T* BE NEEDED - but is!!!
 
 uses
-  ActnList, Classes, ComCtrls,
-  Controls, Dialogs, ExtCtrls, fmeDiskPartitionsPanel, fmeSDUBlocks, fmeSDUDiskPartitions, Forms,
-  Graphics, ImgList, Menus, Messages, OTFEFreeOTFEBase_U,
-  SDUGeneral, StdCtrls, SysUtils, Variants, Windows;
+
+  //delphi / libs
+  ActnList, Classes, ComCtrls, StdCtrls, SysUtils, Variants, Windows,
+  Controls, Dialogs, ExtCtrls, Forms,
+  Graphics, ImgList, Menus, Messages,
+  //sdu & LibreCrypt utils
+  OTFEFreeOTFEBase_U, SDUGeneral,
+  // LibreCrypt forms
+  fmeSDUBlocks, fmeSDUDiskPartitions;
 
 type
   TfmeSelectPartition = class (TFrame)
@@ -37,7 +42,7 @@ type
     ActionList1:   TActionList;
     actProperties: TAction;
     Properties1:   TMenuItem;
-    SDUDiskPartitionsPanel1: TfmeDiskPartitionsPanel;
+    SDUDiskPartitionsPanel1: TfmeSDUDiskPartitions;
     procedure TabControl1Change(Sender: TObject);
     procedure ckShowCDROMClick(Sender: TObject);
     procedure ckEntireDiskClick(Sender: TObject);
@@ -51,6 +56,7 @@ type
     FRemovableDevices: TStringList;
 
     function GetSelectedDevice(): String;
+    procedure SetSelectedDevice(val: String);
 
     procedure SetPartitionDisplayDisk(diskNo: Integer);
     procedure SetAllowCDROM(allow: Boolean);
@@ -62,7 +68,7 @@ type
 
     procedure NotifyChanged(Sender: TObject);
     procedure UpdateErrorWarning();
-//    procedure CenterErrorWarning();
+    //    procedure CenterErrorWarning();
 
     procedure EnableDisableControls();
 
@@ -76,7 +82,7 @@ type
     procedure Initialize();
     function SelectedSize(): ULONGLONG;
   published
-    property SelectedDevice: String Read GetSelectedDevice;
+    property SelectedDevice: String Read GetSelectedDevice Write SetSelectedDevice;
     property AllowCDROM: Boolean Read FAllowCDROM Write SetAllowCDROM default True;
     property OnChange: TNotifyEvent Read FOnChange Write FOnChange;
 
@@ -89,10 +95,15 @@ implementation
 {$R *.dfm}
 
 uses
+              //delphi / libs
   GraphUtil,  // Required for GetHighLightColor(...)
+              //sdu & LibreCrypt utils
   SDUDiskPropertiesDlg,
   SDUi18n,
-  SDUPartitionPropertiesDlg;
+  SDUPartitionPropertiesDlg, lcTypes, PartitionTools
+  // LibreCrypt forms
+
+  ;
 
 const
   COLOR_USABLE   = TColor($00C000); // clLime too bright, clGreen too dark
@@ -112,14 +123,14 @@ const
 resourcestring
   RS_NO_PARTITIONS_FOUND = '<No partitions found>';
 
-  RS_CANT_GET_DISK_LAYOUT = '<Unable to get disk layout information for disk #%1>';
-  RS_ENTIRE_DISK_X        = '<Entire disk #%1>';
-  RS_CDROM_IN_X           = '<CDROM/DVD in %1>';
+  RS_CANT_GET_DISK_LAYOUT = '<Unable to get disk layout information for disk #%d>';
+  RS_ENTIRE_DISK_X        = '<Entire disk #%d>';
+  RS_CDROM_IN_X           = '<CDROM/DVD in %s>';
 
-  RS_DBLCLK_PROMPT_PARTITION = 'Doubleclick partition to display properties';
-  RS_DBLCLK_PROMPT_DISK      = 'Doubleclick to display disk properties';
+  RS_DBLCLK_PROMPT_PARTITION = 'Doubleclick partition to show properties';
+  RS_DBLCLK_PROMPT_DISK      = 'Doubleclick to show disk properties';
 
-  RS_PARTITION = 'Partition #%1';
+  RS_PARTITION = 'Partition #%d';
 
   RS_PART_ERROR_NO_PARTITION_NO      =
     'Windows has not allocated this partition a partition number';
@@ -217,7 +228,7 @@ begin
   if GetFreeOTFEBase().HDDNumbersList(diskNo) then begin
     for i := low(diskNo) to high(diskNo) do begin
       deviceIndicator := HIWORD_DISK + DWORD(diskNo[i]);
-      TabControl1.Tabs.AddObject(SDUParamSubstitute(_('Disk #%1'), [diskNo[i]]),
+      TabControl1.Tabs.AddObject(Format(_('Disk #%d'), [diskNo[i]]),
         TObject(deviceIndicator));
     end;
   end;
@@ -310,7 +321,7 @@ begin
 
     // If synthetic layout, clear block captions
     if SDUDiskPartitionsPanel1.SyntheticDriveLayout then begin
-      blk.Caption    := SDUParamSubstitute(RS_PARTITION,
+      blk.Caption    := Format(RS_PARTITION,
         [SDUDiskPartitionsPanel1.PartitionInfo[i].PartitionNumber]);
       blk.SubCaption := '';
     end;
@@ -355,19 +366,66 @@ begin
     if (TabControl1.TabIndex >= 0) then begin
       // CD/DVD drive selected
       pnlNoPartitionDisplay.Caption :=
-        SDUParamSubstitute(RS_CDROM_IN_X, [TabControl1.Tabs[TabControl1.TabIndex]]);
+        Format(RS_CDROM_IN_X, [TabControl1.Tabs[TabControl1.TabIndex]]);
     end;
   end else begin
     if not (SDUDiskPartitionsPanel1.DriveLayoutInformationValid) then begin
       pnlNoPartitionDisplay.Caption :=
-        SDUParamSubstitute(RS_CANT_GET_DISK_LAYOUT, [SDUDiskPartitionsPanel1.DiskNumber]);
+        Format(RS_CANT_GET_DISK_LAYOUT, [SDUDiskPartitionsPanel1.DiskNumber]);
     end else begin
       pnlNoPartitionDisplay.Caption :=
-        SDUParamSubstitute(RS_ENTIRE_DISK_X, [SDUDiskPartitionsPanel1.DiskNumber]);
+        Format(RS_ENTIRE_DISK_X, [SDUDiskPartitionsPanel1.DiskNumber]);
     end;
   end;
 
 end;
+
+procedure TfmeSelectPartition.SetSelectedDevice(val: String);
+var
+  DiskNo, PartitionNo, i: Integer;
+  partInfo:               TPartitionInformationEx;
+  deviceIndicator:        DWORD;
+  useDevice:              Integer;
+  partSet, diskSet:       Boolean;
+begin
+  if not SDUPartitionDiscFromDeviceName(DiskNo, PartitionNo, val) then
+    raise Exception.Create('Invalid device specified: ' + val);
+
+  partSet := False;
+  diskSet := False;
+  i       := 0;
+  while i < TabControl1.Tabs.Count do begin
+    deviceIndicator := DWORD(TabControl1.Tabs.Objects[i]);
+    useDevice       := (deviceIndicator and $FFFF);
+    if useDevice = DiskNo then begin
+      TabControl1.TabIndex := i;
+      diskSet              := True;
+      break;
+    end;
+
+    Inc(i);
+  end;
+  if not diskSet then
+    raise Exception.Create('Invalid disk specified: ' + val);
+
+  i := 0;
+
+  while SDUDiskPartitionsPanel1.IsValidpartition(i) do begin
+    partInfo := SDUDiskPartitionsPanel1.PartitionInfo[i];
+    if partInfo.PartitionNumber = PartitionNo then begin
+      SDUDiskPartitionsPanel1.Selected := i;
+      partSet := True;
+      break;
+    end;
+
+    Inc(i);
+  end;
+  if not partSet then
+    raise Exception.Create('Invalid partition specified: ' + val);
+
+end;
+
+
 
 function TfmeSelectPartition.GetSelectedDevice(): String;
 var
@@ -385,25 +443,28 @@ begin
     if ((deviceIndicator and HIWORD_CDROM) = HIWORD_CDROM) then begin
       // Device name can be found in FRemovableDevices
       Result := FRemovableDevices[useDevice];
-    end else
-    if ((deviceIndicator and HIWORD_DISK) = HIWORD_DISK) then begin
-      partitionNo := NO_PARTITION;
-      if SDUDiskPartitionsPanel1.DriveLayoutInformationValid then begin
-        if ckEntireDisk.Checked then begin
-          partitionNo := 0;
-        end else
-        if (SDUDiskPartitionsPanel1.Selected > NO_PARTITION) then begin
-          partInfo := SDUDiskPartitionsPanel1.PartitionInfo[SDUDiskPartitionsPanel1.Selected];
-          // Sanity...
-          if (partInfo.PartitionNumber <> 0) then begin
-            partitionNo := partInfo.PartitionNumber;
+    end else begin
+      if ((deviceIndicator and HIWORD_DISK) = HIWORD_DISK) then begin
+        partitionNo := NO_PARTITION;
+        if SDUDiskPartitionsPanel1.DriveLayoutInformationValid then begin
+          if ckEntireDisk.Checked then begin
+            partitionNo := 0;
+            //    FMT_DEVICENAME_HDD_PHYSICAL_DISK  or   FMT_DEVICENAME_HDD_DEVICE        ?
+          end else begin
+            if (SDUDiskPartitionsPanel1.Selected > NO_PARTITION) then begin
+              partInfo := SDUDiskPartitionsPanel1.PartitionInfo[SDUDiskPartitionsPanel1.Selected];
+              // Sanity...
+              if (partInfo.PartitionNumber <> 0) then begin
+                partitionNo := partInfo.PartitionNumber;
+              end;
+            end;
           end;
         end;
+
+        if (partitionNo > NO_PARTITION) then
+          Result := SDUDeviceNameForPartition(useDevice, partitionNo);
+
       end;
-
-      if (partitionNo > NO_PARTITION) then
-        Result := SDUDeviceNameForPartition(useDevice, partitionNo);
-
     end;
   end;
 
@@ -416,11 +477,11 @@ var
   showIconError:   Boolean;
   useIconidx:      Integer;
   tmpImg:          TIcon;
-//  imgLabelDiff:    Integer;
+  //  imgLabelDiff:    Integer;
 begin
-//  imgLabelDiff         := lblErrorWarning.left - (imgErrorWarning.left + imgErrorWarning.Width);
-//  imgErrorWarning.left := 0;
-//  lblErrorWarning.left := 0;
+  //  imgLabelDiff         := lblErrorWarning.left - (imgErrorWarning.left + imgErrorWarning.Width);
+  //  imgErrorWarning.left := 0;
+  //  lblErrorWarning.left := 0;
 
   SelectionErrorWarning(msg, showIconWarning, showIconError);
 
@@ -442,21 +503,21 @@ begin
     tmpImg.Free();
   end;
 
-//  lblErrorWarning.left := imgErrorWarning.left + imgErrorWarning.Width + imgLabelDiff;
-//  CenterErrorWarning();
+  //  lblErrorWarning.left := imgErrorWarning.left + imgErrorWarning.Width + imgLabelDiff;
+  //  CenterErrorWarning();
 
 end;
-//
-//procedure TfmeSelectPartition.CenterErrorWarning();
-//var
-//  ctrlArr: TControlArray;
-//begin
-//  // Center the icon and message
-//  SetLength(ctrlArr, 2);
-//  ctrlArr[0] := imgErrorWarning;
-//  ctrlArr[1] := lblErrorWarning;
-//  SDUCenterControl(ctrlArr, ccHorizontal);
-//end;
+ //
+ //procedure TfmeSelectPartition.CenterErrorWarning();
+ //var
+ //  ctrlArr: TControlArray;
+ //begin
+ //  // Center the icon and message
+ //  SetLength(ctrlArr, 2);
+ //  ctrlArr[0] := imgErrorWarning;
+ //  ctrlArr[1] := lblErrorWarning;
+ //  SDUCenterControl(ctrlArr, ccHorizontal);
+ //end;
 
 procedure TfmeSelectPartition.NotifyChanged(Sender: TObject);
 begin
@@ -466,9 +527,9 @@ begin
     // 0 is the entire disk, partitions start at 1
     (SDUDiskPartitionsPanel1.Selected >= 0));
 
-  if Assigned(FOnChange) then begin
+  if Assigned(FOnChange) then
     FOnChange(self);
-  end;
+
 end;
 
 procedure TfmeSelectPartition.SelectionErrorWarning(var msg: String;
@@ -500,20 +561,25 @@ var
     partInfo: TPartitionInformationEx;
   begin
     selectedDriveLetters := selectedDriveLetters +
-      SDUDiskPartitionsPanel1.DriveLetter[partno];
-    partInfo             := SDUDiskPartitionsPanel1.PartitionInfo[partno];
-    if partInfo.PartitionStyle = PARTITION_STYLE_MBR then
-      bootableFlag := (bootableFlag or partInfo.mbr.BootIndicator)
-    else
+      SDUDiskPartitionsPanel1.DriveLetterForPart[partno];
+    //if ignroed partition (eg too small) then cant get details
+    if SDUDiskPartitionsPanel1.IsValidPartition(partno) then begin
 
-    if partInfo.PartitionStyle = PARTITION_STYLE_GPT then begin
-      // no 'bootable' fag for gpt - but 'required' flag
-      bootableFlag :=
-        bootableFlag or ((partInfo.gpt.Attributes and GPT_ATTRIBUTE_PLATFORM_REQUIRED) > 0);
-      IsGptDisc    := True;
+      partInfo := SDUDiskPartitionsPanel1.PartitionInfo[partno];
+      if partInfo.PartitionStyle = PARTITION_STYLE_MBR then begin
+        bootableFlag := (bootableFlag or partInfo.mbr.BootIndicator);
+      end else begin
+
+        if partInfo.PartitionStyle = PARTITION_STYLE_GPT then begin
+          // no 'bootable' fag for gpt - but 'required' flag
+          bootableFlag :=
+            bootableFlag or ((partInfo.gpt.Attributes and GPT_ATTRIBUTE_PLATFORM_REQUIRED) > 0);
+          IsGptDisc    := True;
+        end;
+      end;
+
+      badPartitionNumber := (partInfo.PartitionNumber = 0);
     end;
-
-    badPartitionNumber := (partInfo.PartitionNumber = 0);
   end;
 
 var
@@ -527,7 +593,7 @@ begin
 
   if (SDUDiskPartitionsPanel1.DiskNumber >= 0) then begin
     if not (SDUDiskPartitionsPanel1.DriveLayoutInformationValid) then begin
-      msg     := Format(UNABLE_TO_GET_DISK_LAYOUT,     [SDUDiskPartitionsPanel1.DiskNumber]);
+      msg     := Format(UNABLE_TO_GET_DISK_LAYOUT, [SDUDiskPartitionsPanel1.DiskNumber]);
       isError := True;
     end else begin
       selectedDriveLetters := '';
@@ -589,7 +655,7 @@ end;
 
 procedure TfmeSelectPartition.FrameResize(Sender: TObject);
 begin
-//  CenterErrorWarning();
+  //  CenterErrorWarning();
 end;
 
 function TfmeSelectPartition.IsCDROMTabSelected(): Boolean;
@@ -648,11 +714,11 @@ end;
 procedure TfmeSelectPartition.actPropertiesExecute(Sender: TObject);
 var
   dlgPartition: TSDUPartitionPropertiesDialog;
-  dlgDisk:      TSDUDiskPropertiesDialog;
+  dlgDisk:      TfrmDiskProperties;
 begin
   if ckEntireDisk.Checked then begin
     if (SDUDiskPartitionsPanel1.DiskNumber >= 0) then begin
-      dlgDisk := TSDUDiskPropertiesDialog.Create(nil);
+      dlgDisk := TfrmDiskProperties.Create(nil);
       try
         dlgDisk.fDiskNumber := SDUDiskPartitionsPanel1.DiskNumber;
 
@@ -670,7 +736,7 @@ begin
         dlgPartition.fPartitionInfo  :=
           SDUDiskPartitionsPanel1.PartitionInfo[SDUDiskPartitionsPanel1.Selected];
         dlgPartition.fMountedAsDrive :=
-          SDUDiskPartitionsPanel1.DriveLetter[SDUDiskPartitionsPanel1.Selected];
+          SDUDiskPartitionsPanel1.DriveLetterForPart[SDUDiskPartitionsPanel1.Selected];
 
         dlgPartition.ShowModal();
       finally

@@ -5,7 +5,7 @@
 <meta name="description" content="LibreCrypt: An Open-Source transparent encryption program for PCs. With this software, you can create one or more &quot;containers&quot; on your PC - which appear as disks, anything written to these disks is automatically encrypted before being stored on your hard drive.">
 
 <meta name="author" content="Sarah Dean">
-<meta name="copyright" content="Copyright 2004, 2005, 2006, 2007, 2008 Sarah Dean">
+<meta name="copyright" content="Copyright 2004, 2005, 2006, 2007, 2008 Sarah Dean 2015 tdk">
 
 
 <TITLE>Technical Details: Critical Data Block Layouts</TITLE>
@@ -34,10 +34,10 @@ _[LibreCrypt](http://LibreCrypt.eu/): Open-Source disk encryption for Windows_
 Please select which CDB Format you would like information on:
 
 <UL>
-* [CDB Format ID 1](technical_details__FreeOTFE_CDB_layout_format_1.html) _(obsolete)_
-* [CDB Format ID 2](technical_details__FreeOTFE_CDB_layout_format_2.html) _(obsolete)_
-* [CDB Format ID 3](technical_details__FreeOTFE_CDB_layout_format_3.html) _(obsolete)_
-* [CDB Format ID 4](technical_details__FreeOTFE_CDB_layout_format_4.html)
+* [CDB Format ID 1](technical_details__FreeOTFE_CDB_layout_format_1.md) _(obsolete)_
+* [CDB Format ID 2](technical_details__FreeOTFE_CDB_layout_format_2.md) _(obsolete)_
+* [CDB Format ID 3](technical_details__FreeOTFE_CDB_layout_format_3.md) _(obsolete)_
+* [CDB Format ID 4](technical_details__FreeOTFE_CDB_layout_format_4.md)
 </UL>
 
 

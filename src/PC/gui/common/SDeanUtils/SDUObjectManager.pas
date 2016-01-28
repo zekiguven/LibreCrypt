@@ -7,7 +7,7 @@ uses
   MSntdll,
 
   //sdu
-  SDUGeneral;
+  lcTypes;
 
 type
   TObjectType = (otDirectory, otDevice, otSymlink, otOther);
@@ -293,7 +293,6 @@ var
   idx:    Integer;
 begin
   Result := '';
-
   idx := FAllObjects.IndexOf(startName);
   if (idx >= 0) then begin
     obj := PObjMgrEntry(FAllObjects.Objects[idx]);
@@ -303,8 +302,6 @@ begin
       Result := obj.FullName;
     end;
   end;
-
-
 end;
 
 function TSDUObjManager.UnderlyingDeviceForDrive(driveLetter: DriveLetterChar): String;

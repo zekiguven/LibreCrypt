@@ -9,10 +9,14 @@ unit frmPKCS11Session;
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+     //delphi & libs
+          Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls,
-  pkcs11_library,
-  pkcs11_session, SDUForms;
+  //sdu & LibreCrypt utils
+     pkcs11_library,
+  pkcs11_session,
+   // LibreCrypt forms
+   SDUForms;
 
 type
   TfrmPKCS11Session = class(TSDUForm)
@@ -51,12 +55,13 @@ implementation
 {$R *.dfm}
 
 uses
+//sdu,lcutils
   SDUGeneral,
   lcDialogs,
   SDUi18n,
   pkcs11_slot,
   pkcs11_token,
-  PKCS11Lib;
+ lcConsts, PKCS11Lib;
 
 resourcestring
   RS_SLOT_REMOVED = 'Slot removed; token no longer available - please reselect and try again';
@@ -139,7 +144,7 @@ begin
     if (FPKCS11Session = nil) then
       begin
       SDUMessageDlg(
-                    SDUParamSubstitute(_('Unable to open session for token in slot %1'), [slotID])+SDUCRLF+
+                    Format(_('Unable to open session for token in slot %d'), [slotID])+SDUCRLF+
                     SDUCRLF+
                     FPKCS11Session.RVToString(FPKCS11Session.LastRV),
                     mtError

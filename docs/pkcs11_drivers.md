@@ -5,7 +5,7 @@
 <meta name="description" content="LibreCrypt: An Open-Source transparent encryption program for PCs. With this software, you can create one or more &quot;containers&quot; on your PC - which appear as disks, anything written to these disks is automatically encrypted before being stored on your hard drive.">
 
 <meta name="author" content="Sarah Dean">
-<meta name="copyright" content="Copyright 2004, 2005, 2006, 2007, 2008 Sarah Dean">
+<meta name="copyright" content="Copyright 2004, 2005, 2006, 2007, 2008 Sarah Dean 2015 tdk">
 
 
 <TITLE>Appendix E: PKCS#11 Driver Libraries</TITLE>
@@ -37,7 +37,7 @@ Please note that:
 * This list is *_not exhaustive_* - many more tokens are supported than are listed here.
 </OL>
 
-If you are using a token which isn't mentioned on the list below, please check with your token supplier as to what to enter, and [get in touch](contact_details.html) to have it added to the list.
+If you are using a token which isn't mentioned on the list below, please check with your token supplier as to what to enter, and [get in touch](contact_details.md) to have it added to the list.
 
 <TABLE BORDER=1>
 <TR>

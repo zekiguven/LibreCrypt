@@ -7,6 +7,7 @@ unit MouseRNG;
  // -----------------------------------------------------------------------------
  //
 
+ { TODO -otdk -crefactor : dont use separate control - get mouse movements from all forms. split into two first engine/component }
 
 interface
 
@@ -25,15 +26,6 @@ const
   //          oscillate between two adjacent pixels
   // Set this value to 2 to reduce the risk of this happening
   MIN_DIFF = 2;
-
-  // This specifies how many of the least significant bits from the X & Y
-  // co-ordinates will be used as random data.
-  // If this is set too high, then
-  // If this is set too low, then the user has to move the mouse a greater
-  // distance between samples, otherwise the higher bits in the sample won't
-  // change.
-  // A setting of 1 will use the LSB of the mouse's X, Y co-ordinates
-  BITS_PER_SAMPLE = 1;
 
   // This specifies the time interval (in ms) between taking samples of the
   // mouse's position
@@ -61,23 +53,40 @@ type
     Next:  PPointList;
   end;
 
+  TControlFriend = class(TControl);
+
+  {gathers data = pass in form or component}
+   TMouseRNGEngine = class (TObject)
+   private
+    fSavedMouseMoveEvent: TMouseMoveEvent;
+
+
+
+   public
+
+    procedure DoMouseMove(Sender: TObject; Shift: TShiftState;
+    X, Y: Integer);//  TMouseMoveEvent
+     constructor Create;
+    procedure RegisterControlForMouseCapture(actrl:TControl);
+     procedure DeRegisterControlForMouseCapture(actrl: TControl);
+    end;
 
   TMouseRNG = class (TCustomControl)
   private
     // This stores the random data as it is generated
-    RandomByte:     Byte;
+    frandomByte:     Byte;
     // This stores the number of random bits in RandomByte
-    RandomByteBits: Integer;
+    frandomByteBits: Integer;
 
     // Storage for when the mouse move event is triggered
-    LastMouseX: Integer;
-    LastMouseY: Integer;
+    flastMouseX: Integer;
+    flastMouseY: Integer;
 
 
     // The linked list of points on the canvas
-    PointCount:    Cardinal;
-    LinesListHead: PPointList;
-    LinesListTail: PPointList;
+    fpointCount:    Cardinal;
+    fLinesListHead: PPointList;
+    fLinesListTail: PPointList;
 
 
     // Style information
@@ -112,7 +121,7 @@ type
     procedure ProcessSample(X, Y: Integer);
 
   public
-    Timer: TTimer;
+    fTimer: TTimer;
 
     constructor Create(AOwner: TComponent); override;
     destructor Destroy(); override;
@@ -135,8 +144,6 @@ type
     property TrailLines: Cardinal Read FTrailLines Write FTrailLines;
     property LineWidth: Cardinal Read FLineWidth Write SetLineWidth;
     property LineColor: TColor Read FLineColor Write SetLineColor;
-
-
 
     property Align;
     property Anchors;
@@ -199,6 +206,17 @@ procedure Register;
 
 implementation
 
+const
+
+  // This specifies how many of the least significant bits from the X & Y
+  // co-ordinates will be used as random data.
+  // If this is set too high, then
+  // If this is set too low, then the user has to move the mouse a greater
+  // distance between samples, otherwise the higher bits in the sample won't
+  // change.
+  // A setting of 1 will use the LSB of the mouse's X, Y co-ordinates
+  BITS_PER_SAMPLE = 1;
+
 
 procedure Register;
 begin
@@ -220,23 +238,23 @@ begin
   LineColor := clNavy;
 
 
-  Timer          := TTimer.Create(self);
-  Timer.Enabled  := False;
-  Timer.Interval := TIMER_INTERVAL;
-  Timer.OnTimer  := TimerFired;
+  fTimer          := TTimer.Create(self);
+  fTimer.Enabled  := False;
+  fTimer.Interval := TIMER_INTERVAL;
+  fTimer.OnTimer  := TimerFired;
 
-  LinesListHead := nil;
-  LinesListTail := nil;
-  PointCount    := 0;
+  fLinesListHead := nil;
+  fLinesListTail := nil;
+  fpointCount    := 0;
 
 
   // Initially, there are no mouse co-ordinates taken
-  LastMouseX := -1;
-  LastMouseY := -1;
+  flastMouseX := -1;
+  flastMouseY := -1;
 
   // Cleardown the random bytes store
-  RandomByte     := 0;
-  RandomByteBits := 0;
+  frandomByte     := 0;
+  frandomByteBits := 0;
 
 
   // Setup the inital size of the component
@@ -245,26 +263,21 @@ begin
   SetBounds(Left, Top, 128, 128);
 
   Enabled := False;
-
 end;
-
 
 destructor TMouseRNG.Destroy();
 begin
-  Timer.Enabled := False;
-  Timer.Free();
+  fTimer.Enabled := False;
+  fTimer.Free();
 
   Enabled := False;
   // Cleardown any points, overwriting them as we do so
-  while (PointCount > 0) do begin
+  while (fpointCount > 0) do begin
     RemoveLastPoint();
   end;
 
   inherited Destroy();
-
 end;
-
-
 
 procedure TMouseRNG.TimerFired(Sender: TObject);
 var
@@ -273,9 +286,9 @@ begin
   changed := False;
 
   // Handle the situation in which no mouse co-ordinates have yet been taken
-  if (LastMouseX > -1) and (LastMouseY > -1) then begin
+  if (flastMouseX > -1) and (flastMouseY > -1) then begin
     // If there are no points, we have a new one
-    if (PointCount = 0) then begin
+    if (fpointCount = 0) then begin
       changed := True;
     end else begin
       // If the mouse cursor has moved a significant difference, use the new
@@ -289,9 +302,9 @@ begin
       // the mouse back and forth horizontally; instead of seeing a new dark
       // line appearing (indicating that the sample has been taken), the
       // inverse coloured line appears, indicating the mouse pointer
-      if ((LastMouseX > (LinesListHead.Point.X + MIN_DIFF)) or
-        (LastMouseX < (LinesListHead.Point.X - MIN_DIFF)) and (LastMouseY >
-        (LinesListHead.Point.Y + MIN_DIFF)) or (LastMouseY < (LinesListHead.Point.Y - MIN_DIFF)))
+      if ((flastMouseX > (fLinesListHead.Point.X + MIN_DIFF)) or
+        (flastMouseX < (fLinesListHead.Point.X - MIN_DIFF)) and (flastMouseY >
+        (fLinesListHead.Point.Y + MIN_DIFF)) or (flastMouseY < (fLinesListHead.Point.Y - MIN_DIFF)))
       then begin
         changed := True;
       end;
@@ -304,10 +317,10 @@ begin
   if (not (changed)) then begin
     // User hasn't moved cursor - delete oldest line until we catch up with
     // the cursor
-    if ((LinesListTail <> LinesListHead) and (LinesListTail <> nil)) then begin
+    if ((fLinesListTail <> fLinesListHead) and (fLinesListTail <> nil)) then begin
       Canvas.Pen.Mode := pmMergeNotPen;
-      Canvas.MoveTo(LinesListTail.Point.X, LinesListTail.Point.Y);
-      Canvas.LineTo(LinesListTail.Next.Point.X, LinesListTail.Next.Point.Y);
+      Canvas.MoveTo(fLinesListTail.Point.X, fLinesListTail.Point.Y);
+      Canvas.LineTo(fLinesListTail.Next.Point.X, fLinesListTail.Next.Point.Y);
       RemoveLastPoint();
     end;
 
@@ -316,27 +329,27 @@ begin
 
 
     // Store the position
-    StoreNewPoint(LastMouseX, LastMouseY);
+    StoreNewPoint(flastMouseX, flastMouseY);
 
     // User moved cursor - don't delete any more lines unless the max number
     // of lines which may be displayed is exceeded
-    if ((PointCount + 1 > TrailLines) and (PointCount > 1)) then begin
+    if ((fpointCount + 1 > TrailLines) and (fpointCount > 1)) then begin
       Canvas.Pen.Mode := pmMergeNotPen;
-      Canvas.MoveTo(LinesListTail.Point.X, LinesListTail.Point.Y);
-      Canvas.LineTo(LinesListTail.Next.Point.X, LinesListTail.Next.Point.Y);
+      Canvas.MoveTo(fLinesListTail.Point.X, fLinesListTail.Point.Y);
+      Canvas.LineTo(fLinesListTail.Next.Point.X, fLinesListTail.Next.Point.Y);
       RemoveLastPoint();
     end;
 
 
     // Draw newest line
-    if (TrailLines > 0) and (PointCount > 1) then begin
+    if (TrailLines > 0) and (fpointCount > 1) then begin
       Canvas.Pen.Mode := pmCopy;
-      Canvas.MoveTo(LinesListHead.Prev.Point.X, LinesListHead.Prev.Point.Y);
-      Canvas.LineTo(LinesListHead.Point.X, LinesListHead.Point.Y);
+      Canvas.MoveTo(fLinesListHead.Prev.Point.X, fLinesListHead.Prev.Point.Y);
+      Canvas.LineTo(fLinesListHead.Point.X, fLinesListHead.Point.Y);
     end;
 
 
-    ProcessSample(LastMouseX, LastMouseY);
+    ProcessSample(flastMouseX, flastMouseY);
   end;
 
 end;
@@ -346,19 +359,19 @@ procedure TMouseRNG.MouseMove(Shift: TShiftState; X, Y: Integer);
 begin
   inherited MouseMove(Shift, X, Y);
 
-  if (TrailLines > 0) and (PointCount >= 1) then begin
+  if (TrailLines > 0) and (fpointCount >= 1) then begin
     Canvas.Pen.Mode := pmXor;
-    Canvas.MoveTo(LinesListHead.Point.X, LinesListHead.Point.Y);
-    Canvas.LineTo(LastMouseX, LastMouseY);
+    Canvas.MoveTo(fLinesListHead.Point.X, fLinesListHead.Point.Y);
+    Canvas.LineTo(flastMouseX, flastMouseY);
   end;
 
-  LastMouseX := X;
-  LastMouseY := Y;
+  flastMouseX := X;
+  flastMouseY := Y;
 
-  if (TrailLines > 0) and (PointCount >= 1) then begin
+  if (TrailLines > 0) and (fpointCount >= 1) then begin
     Canvas.Pen.Mode := pmXor;
-    Canvas.MoveTo(LinesListHead.Point.X, LinesListHead.Point.Y);
-    Canvas.LineTo(LastMouseX, LastMouseY);
+    Canvas.MoveTo(fLinesListHead.Point.X, fLinesListHead.Point.Y);
+    Canvas.LineTo(flastMouseX, flastMouseY);
   end;
 
 end;
@@ -371,7 +384,7 @@ begin
 
   inherited SetEnabled(Value);
 
-  Timer.Enabled := Value;
+  fTimer.Enabled := Value;
 
   // Only clear the display on an enabled->disabled, or disabled->enabled
   // change.
@@ -412,8 +425,8 @@ begin
   ClearDisplay();
 
   // Clear internal RNG state
-  RandomByte     := 0;
-  RandomByteBits := 0;
+  frandomByte     := 0;
+  frandomByteBits := 0;
 
 end;
 
@@ -432,8 +445,8 @@ begin
   // Because the display's been cleared, the chase position can be set to the
   // current position
   // Delete all lines
-  if (LinesListHead <> nil) then begin
-    while (LinesListTail <> LinesListHead) do begin
+  if (fLinesListHead <> nil) then begin
+    while (fLinesListTail <> fLinesListHead) do begin
       RemoveLastPoint();
     end;
   end;
@@ -464,21 +477,21 @@ procedure TMouseRNG.RemoveLastPoint();
 var
   tmpPoint: PPointList;
 begin
-  if (LinesListTail <> nil) then begin
-    tmpPoint      := LinesListTail;
-    LinesListTail := LinesListTail.Next;
-    if (LinesListTail <> nil) then begin
-      LinesListTail.Prev := nil;
+  if (fLinesListTail <> nil) then begin
+    tmpPoint      := fLinesListTail;
+    fLinesListTail := fLinesListTail.Next;
+    if (fLinesListTail <> nil) then begin
+      fLinesListTail.Prev := nil;
     end;
     // Overwrite position before discarding record
     tmpPoint.Point.X := 0;
     tmpPoint.Point.Y := 0;
     Dispose(tmpPoint);
-    Dec(PointCount);
+    Dec(fpointCount);
   end;
 
-  if (LinesListTail = nil) then begin
-    LinesListHead := nil;
+  if (fLinesListTail = nil) then begin
+    fLinesListHead := nil;
   end;
 
 end;
@@ -493,15 +506,15 @@ begin
   tmpPoint.Point.X := X;
   tmpPoint.Point.Y := Y;
   tmpPoint.Next    := nil;
-  tmpPoint.Prev    := LinesListHead;
-  if (LinesListHead <> nil) then begin
-    LinesListHead.Next := tmpPoint;
+  tmpPoint.Prev    := fLinesListHead;
+  if (fLinesListHead <> nil) then begin
+    fLinesListHead.Next := tmpPoint;
   end;
-  LinesListHead := tmpPoint;
-  Inc(PointCount);
+  fLinesListHead := tmpPoint;
+  Inc(fpointCount);
 
-  if (LinesListTail = nil) then begin
-    LinesListTail := LinesListHead;
+  if (fLinesListTail = nil) then begin
+    fLinesListTail := fLinesListHead;
   end;
 
 end;
@@ -515,18 +528,18 @@ begin
 
   // This stores the random data as it is generated
   for i := 1 to BITS_PER_SAMPLE do begin
-    RandomByte := RandomByte shl 1;
-    RandomByte := RandomByte + (X and 1);
-    Inc(RandomByteBits);
+    frandomByte := frandomByte shl 1;
+    frandomByte := frandomByte + (X and 1);
+    Inc(frandomByteBits);
 
     if ((Enabled) and (Assigned(FOnBitGenerated))) then begin
       FOnBitGenerated(self, X and $01);
     end;
 
 
-    RandomByte := RandomByte shl 1;
-    RandomByte := RandomByte + (Y and 1);
-    Inc(RandomByteBits);
+    frandomByte := frandomByte shl 1;
+    frandomByte := frandomByte + (Y and 1);
+    Inc(frandomByteBits);
 
     if ((Enabled) and (Assigned(FOnBitGenerated))) then
       FOnBitGenerated(self, Y and $01);
@@ -536,12 +549,12 @@ begin
   end;
 
 
-  if (RandomByteBits >= 8) then begin
+  if (frandomByteBits >= 8) then begin
     if ((Enabled) and (Assigned(FOnByteGenerated))) then
-      FOnByteGenerated(self, RandomByte);
+      FOnByteGenerated(self, frandomByte);
 
-    RandomByteBits := 0;
-    RandomByte     := 0;
+    frandomByteBits := 0;
+    frandomByte     := 0;
   end;
 end;
 
@@ -609,5 +622,33 @@ begin
 end;
 
 
+
+{ TMouseRNGEngine }
+
+ // register controls to capture mouse move events and use for randomness
+constructor TMouseRNGEngine.Create;
+begin
+  fSavedMouseMoveEvent := nil;
+end;
+
+procedure TMouseRNGEngine.DoMouseMove(Sender: TObject; Shift: TShiftState; X,
+  Y: Integer);
+begin
+  if assigned(fSavedMouseMoveEvent) then  fSavedMouseMoveEvent(Sender,Shift,X,Y);
+  // todo: process mouse event ...
+end;
+
+procedure TMouseRNGEngine.RegisterControlForMouseCapture(actrl: TControl);
+begin
+ assert(not assigned(fSavedMouseMoveEvent), 'only one control supported so far');
+ fSavedMouseMoveEvent := TControlFriend(actrl).OnMouseMove;
+ TControlFriend(actrl).OnMouseMove := DoMouseMove;
+end;
+
+procedure TMouseRNGEngine.DeRegisterControlForMouseCapture(actrl: TControl);
+begin
+TControlFriend(actrl).OnMouseMove := fSavedMouseMoveEvent;
+ fSavedMouseMoveEvent := nil;
+end;
 
 end.

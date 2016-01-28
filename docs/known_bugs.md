@@ -5,7 +5,7 @@
 <meta name="description" content="LibreCrypt: An Open-Source transparent encryption program for PCs. With this software, you can create one or more &quot;containers&quot; on your PC - which appear as disks, anything written to these disks is automatically encrypted before being stored on your hard drive.">
 
 <meta name="author" content="Sarah Dean">
-<meta name="copyright" content="Copyright 2004, 2005, 2006, 2007, 2008 Sarah Dean">
+<meta name="copyright" content="Copyright 2004, 2005, 2006, 2007, 2008 Sarah Dean 2015 tdk">
 
 
 <TITLE>Known Bugs</TITLE>
@@ -33,7 +33,7 @@ _[LibreCrypt](http://LibreCrypt.eu/): Open-Source disk encryption for Windows_
 
 Both of the above issues are currently under investigation, and should be fixed in a later version
 
-If you believe that you have found a bug in LibreCrypt, it would be **very much appreciated** if you could get in touch and report it; please see the section on: [Fault/Bug Reporting](fault_reporting.html)
+If you believe that you have found a bug in LibreCrypt, it would be **very much appreciated** if you could get in touch and report it; please see the section on: [Fault/Bug Reporting](fault_reporting.md)
 
 
 

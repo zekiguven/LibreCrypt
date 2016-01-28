@@ -11,11 +11,20 @@ unit frmHashInfo;
 interface
 
 uses
-  Classes, Controls, Dialogs,
-  Forms, Graphics, Messages, OTFEFreeOTFE_U,
-  OTFEFreeOTFEBase_U,
-  SDUForms, StdCtrls,
-  SysUtils, Windows;
+
+     //delphi & libs
+       Classes, Controls, Dialogs,
+  Forms, Graphics, Messages,
+   StdCtrls,
+  SysUtils, Windows,
+  //sdu & LibreCrypt utils
+   SDUForms,   OTFEFreeOTFE_U,
+  OTFEFreeOTFEBase_U
+   // LibreCrypt forms
+
+
+
+;
 
 type
   TfrmHashInfo = class (TSDUForm)
@@ -54,10 +63,13 @@ type
     fShowDriverName: String;
     fShowGUID:       TGUID;
   PUBLIC
-//    OTFEFreeOTFEObj: TOTFEFreeOTFEBase;
      property ShowDriverName : String write fShowDriverName ;
      property ShowGUID : TGUID write fShowGUID;
   end;
+
+
+      // Display a standard dialog with details of the specific hash identified
+    procedure ShowHashDetailsDlg(driverName: String; hashGUID: TGUID);
 
 
 implementation
@@ -65,10 +77,14 @@ implementation
 {$R *.DFM}
 
 uses
+     //delphi & libs
   ComObj, SDUi18n,
             // Required for GUIDToString(...)
   ActiveX,  // Required for IsEqualGUID
-  OTFEFreeOTFEDLL_U, SDUGeneral;
+  //sdu & LibreCrypt utils
+       OTFEFreeOTFEDLL_U, SDUGeneral
+   // LibreCrypt forms
+ ;
 
 resourcestring
   RS_UNABLE_LOCATE_HASH_DRIVER = '<Unable to locate correct hash driver>';
@@ -141,13 +157,13 @@ begin
             edHashTitle.Text     := currHash.Title;
             edHashVersionID.Text := GetFreeOTFEBase().VersionIDToStr(currHash.VersionID);
 
-            tmpString := SDUParamSubstitute(COUNT_BITS, [currHash.Length]);
+            tmpString := Format(COUNT_BITS, [currHash.Length]);
             if (currHash.Length = -1) then begin
               tmpString := tmpString + ' ' + _('(length of hash returned may vary)');
             end;
             edHashLength.Text := tmpString;
 
-            tmpString := SDUParamSubstitute(COUNT_BITS, [currHash.BlockSize]);
+            tmpString := Format(COUNT_BITS, [currHash.BlockSize]);
             if (currHash.BlockSize = -1) then begin
               tmpString := tmpString + ' ' + _('(n/a)');
             end;
@@ -160,6 +176,23 @@ begin
 
     end;
 
+  end;
+
+end;
+
+// ----------------------------------------------------------------------------
+procedure ShowHashDetailsDlg(driverName: String; hashGUID: TGUID);
+var
+  detailsDlg: TfrmHashInfo;
+begin
+  detailsDlg := TfrmHashInfo.Create(nil);
+  try
+    detailsDlg.ShowDriverName := driverName;
+    detailsDlg.ShowGUID       := hashGUID;
+
+    detailsDlg.ShowModal();
+  finally
+    detailsDlg.Free();
   end;
 
 end;

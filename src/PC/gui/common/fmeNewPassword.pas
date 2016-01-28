@@ -16,19 +16,19 @@ interface
 uses
   //delphi
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, SDUFrames, Vcl.StdCtrls, Vcl.ComCtrls,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs,  Vcl.StdCtrls, Vcl.ComCtrls,
+  Vcl.Samples.Gauges,
   //sdu
-  SDUGeneral,
+lcTypes,  SDUFrames,
   //librecrypt
-  PasswordRichEdit, OTFEFreeOTFE_PasswordRichEdit, SDUComCtrls,
-  Vcl.Samples.Gauges;
+  PasswordRichEdit, OTFEFreeOTFE_PasswordRichEdit, SDUComCtrls;
 
 type
   TfrmeNewPassword = class (TSDUFrame)
     lblInstructPassword: TLabel;
-    Label17:         TLabel;
+    lblKeyphrase: TLabel;
     preUserKeyFirst: TOTFEFreeOTFE_PasswordRichEdit;
-    Label3:          TLabel;
+    lblConfirm: TLabel;
     preUserKeyConfirm: TOTFEFreeOTFE_PasswordRichEdit;
     ProgressBar1:    TProgressBar;
     lblStrength:     TLabel;
@@ -46,9 +46,11 @@ type
     procedure DoChange();
   public
     constructor Create(AOwner: TComponent); override;
-    procedure SetKeyPhrase(Value: TSDUBytes);
+    procedure SetKeyPhrase(Value: TSDUBytes);  overload;
+        procedure SetKeyPhrase(Value  : string   );   overload;
     function IsPasswordValid: Boolean;
     function GetKeyPhrase: TSDUBytes;
+    procedure ClearKeyPhrase();
   published
     property OnChange: TNotifyEvent Read FOnChange Write FOnChange;
   end;
@@ -62,8 +64,9 @@ implementation
 
 uses
   SDUi18n, strutils,{CommCtrl,uxTheme,}
-
+   SDUGeneral,
   //librecrypt
+  CommonSettings,
   OTFEFreeOTFEBase_U;
 
 const
@@ -84,6 +87,12 @@ const
   G_VALID_FILENAME: TSysCharSet        = [#43..#46, #48..#57, #65..#90, #95, #97..#122];
 
 { TfrmeNewPassword }
+
+procedure TfrmeNewPassword.ClearKeyPhrase;
+begin
+  preUserKeyFirst.Text   := '';
+  preUserKeyConfirm.Text := preUserKeyFirst.Text;
+end;
 
 constructor TfrmeNewPassword.Create(AOwner: TComponent);
 begin
@@ -109,9 +118,13 @@ begin
   preUserKeyFirst.WantReturns := True;
   preUserKeyFirst.WordWrap    := True;
 
-  preUserKeyFirst.PasswordChar := GetFreeOTFEBase().PasswordChar;
-  preUserKeyFirst.WantReturns  := GetFreeOTFEBase().AllowNewlinesInPasswords;
-  preUserKeyFirst.WantTabs     := GetFreeOTFEBase().AllowTabsInPasswords;
+
+  if not GetSettings().ShowPasswords then
+    preUserKeyFirst.PasswordChar := '*';//defaults to #0
+
+  preUserKeyFirst.WantReturns  := GetSettings().AllowNewlinesInPasswords;
+  preUserKeyFirst.WantTabs     := GetSettings().AllowTabsInPasswords;
+  preUserKeyFirst.SetFocus;
 
   preUserKeyConfirm.Plaintext   := True;
   // FreeOTFE volumes CAN have newlines in the user's password
@@ -123,9 +136,12 @@ begin
     preUserKeyFirst.Lines.Clear();
   end;
 
-  preUserKeyConfirm.PasswordChar := GetFreeOTFEBase().PasswordChar;
-  preUserKeyConfirm.WantReturns  := GetFreeOTFEBase().AllowNewlinesInPasswords;
-  preUserKeyConfirm.WantTabs     := GetFreeOTFEBase().AllowTabsInPasswords;
+  if not GetSettings().ShowPasswords then
+    preUserKeyConfirm.PasswordChar := '*';//defaults to #0
+
+  preUserKeyConfirm.WantReturns  := GetSettings().AllowNewlinesInPasswords;
+  preUserKeyConfirm.WantTabs     := GetSettings().AllowTabsInPasswords;
+
 end;
 
 function TfrmeNewPassword.IsPasswordValid(): Boolean;
@@ -234,13 +250,17 @@ begin
   Result := SDUStringToSDUBytes(preUserKeyFirst.Text);
 end;
 
-procedure TfrmeNewPassword.SetKeyPhrase(Value: TSDUBytes);
-begin
-  { TODO 1 -otdk -cbug : handle non ascii user keys - at least warn user }
-  preUserKeyFirst.Text   := SDUBytesToString(Value);
+ procedure TfrmeNewPassword.SetKeyPhrase(Value  : string   );
+ begin
+   { TODO 1 -otdk -cbug : handle non ascii user keys - at least warn user }
+  preUserKeyFirst.Text   := Value;
   preUserKeyConfirm.Text := preUserKeyFirst.Text;
   fKeyPhraseSet          := True;
+ end;
 
+procedure TfrmeNewPassword.SetKeyPhrase(Value: TSDUBytes);
+begin
+  SetKeyPhrase(SDUBytesToString(Value));
 end;
 
 end.
